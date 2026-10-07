@@ -36,9 +36,12 @@ tab1, tab2 = st.tabs(["📲 Timbratura Dipendente", "📊 Area Amministratore"])
 with tab1:
     st.subheader("Registra il tuo ingresso o la tua uscita")
     
-    col_pin, col_mod = st.columns(2)
+    col_pin, col_date, col_mod = st.columns([1.5, 1, 1.5])
+    
     with col_pin:
         pin_inserito = st.text_input("Inserisci il tuo PIN Personale:", type="password", max_chars=4)
+    with col_date:
+        data_selezionata = st.date_input("Data:", datetime.now())
     with col_mod:
         modalita = st.radio("Modalità di lavoro:", ["In Sede", "Smart Working", "Trasferta"], horizontal=True)
 
@@ -49,27 +52,28 @@ with tab1:
             
             col1, col2 = st.columns(2)
             
+            data_str = data_selezionata.strftime("%Y-%m-%d")
+            data_formatted = data_selezionata.strftime("%d/%m/%Y")
+            
             with col1:
                 if st.button("🟢 INGRESSO", use_container_width=True, type="primary"):
                     ora_attuale = datetime.now().strftime("%H:%M:%S")
-                    data_attuale = datetime.now().strftime("%Y-%m-%d")
                     
-                    nuovo_record = pd.DataFrame([[data_attuale, ora_attuale, dipendente, "INGRESSO", modalita]], 
+                    nuovo_record = pd.DataFrame([[data_str, ora_attuale, dipendente, "INGRESSO", modalita]], 
                                                 columns=["Data", "Ora", "Dipendente", "Tipo", "Modalita"])
                     nuovo_record.to_csv(DATA_FILE, mode='a', header=False, index=False)
                     
-                    st.success(f"✅ INGRESSO registrato per **{dipendente}** alle {ora_attuale} ({modalita})")
+                    st.success(f"✅ INGRESSO registrato per **{dipendente}** il **{data_formatted}** alle **{ora_attuale}** ({modalita})")
 
             with col2:
                 if st.button("🔴 USCITA", use_container_width=True):
                     ora_attuale = datetime.now().strftime("%H:%M:%S")
-                    data_attuale = datetime.now().strftime("%Y-%m-%d")
                     
-                    nuovo_record = pd.DataFrame([[data_attuale, ora_attuale, dipendente, "USCITA", modalita]], 
+                    nuovo_record = pd.DataFrame([[data_str, ora_attuale, dipendente, "USCITA", modalita]], 
                                                 columns=["Data", "Ora", "Dipendente", "Tipo", "Modalita"])
                     nuovo_record.to_csv(DATA_FILE, mode='a', header=False, index=False)
                     
-                    st.warning(f"🛑 USCITA registrata per **{dipendente}** alle {ora_attuale} ({modalita})")
+                    st.warning(f"🛑 USCITA registrata per **{dipendente}** il **{data_formatted}** alle **{ora_attuale}** ({modalita})")
         else:
             st.error("❌ PIN non valido. Riprova.")
 
