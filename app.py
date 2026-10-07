@@ -1,18 +1,23 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, date, timedelta
 import os
 
-st.set_page_config(page_title="Rilevazione Presenze", page_icon="⏱️", layout="wide")
+st.set_page_config(page_title="Rilevazione Presenze & Giustificativi", page_icon="⏱️", layout="wide")
 
 DATA_FILE = "presenze_log.csv"
+RICHIESTE_FILE = "richieste_log.csv"
 
-# Inizializzazione file se non esiste
+# Inizializzazione file CSV se non esistono
 if not os.path.exists(DATA_FILE):
     df_init = pd.DataFrame(columns=["Data", "Ora", "Dipendente", "Tipo", "Modalita"])
     df_init.to_csv(DATA_FILE, index=False)
 
-# Mappa Dipendenti con i rispettivi PIN personali
+if not os.path.exists(RICHIESTE_FILE):
+    df_rich = pd.DataFrame(columns=["ID", "Data_Richiesta", "Dipendente", "Tipo", "Data_Inizio", "Data_Fine", "Ore", "Note", "Stato"])
+    df_rich.to_csv(RICHIESTE_FILE, index=False)
+
+# Mappa Dipendenti con PIN personali
 DIPENDENTI_PIN = {
     "1001": "AGOSTINELLI FEDERICA",
     "1002": "BISCHI MICHELE",
@@ -29,19 +34,60 @@ DIPENDENTI_PIN = {
     "1013": "SANTOLINI MAURO"
 }
 
-st.title("⏱️ Sistema Rilevazione Presenze")
+# Funzione per calcolare gli straordinari arrotondati ai 30 minuti
+def calcola_ore_e_straordinari(df_timb, ore_giornaliere_standard=8.0):
+    if df_timb.empty:
+        return pd.DataFrame()
+    
+    # Ordina per data e ora
+    df = df_timb.copy()
+    df['Datetime'] = pd.to_datetime(df['Data'] + ' ' + df['Ora'])
+    df = df.sort_values(['Dipendente', 'Datetime'])
+    
+    report_rows = []
+    
+    for (dip, dt), group in df.groupby(['Dipendente', 'Data']):
+        ingressi = group[group['Tipo'] == 'INGRESSO']['Datetime'].tolist()
+        uscite = group[group['Tipo'] == 'USCITA']['Datetime'].tolist()
+        
+        totale_secondi = 0
+        # Accoppia gli ingressi e le uscite
+        for ing, usc in zip(ingressi, uscite):
+            if usc > ing:
+                totale_secondi += (usc - ing).total_seconds()
+        
+        ore_effettive = totale_secondi / 3600.0
+        
+        # Calcolo straordinario con regola della mezza ora piena (30 min = 0.5 ore)
+        straordinario_grezzo = max(0.0, ore_effettive - ore_giornaliere_standard)
+        
+        # Arrotondamento per difetto ai blocchi di 0.5 ore (30 min)
+        straordinario_approvato = (straordinario_grezzo // 0.5) * 0.5
+        
+        report_rows.append({
+            'Data': dt,
+            'Dipendente': dip,
+            'Ore Lavorate Effettive': round(ore_effettive, 2),
+            'Ore Standard': ore_giornaliere_standard,
+            'Straordinario Calcolato (30 min pieni)': straordinario_approvato
+        })
+        
+    return pd.DataFrame(report_rows)
 
-tab1, tab2 = st.tabs(["📲 Timbratura Dipendente", "📊 Area Amministratore"])
+st.title("⏱️ Sistema Presenze & Gestione Giustificativi")
 
+tab1, tab2, tab3 = st.tabs(["📲 Timbratura", "📝 Richiesta Ferie / Permessi / Malattia", "📊 Area Amministratore"])
+
+# --- TAB 1: TIMBRATURE ---
 with tab1:
     st.subheader("Registra il tuo ingresso o la tua uscita")
     
     col_pin, col_date, col_mod = st.columns([1.5, 1, 1.5])
     
     with col_pin:
-        pin_inserito = st.text_input("Inserisci il tuo PIN Personale:", type="password", max_chars=4)
+        pin_inserito = st.text_input("Inserisci il tuo PIN Personale:", type="password", max_chars=4, key="pin_timb")
     with col_date:
-        data_selezionata = st.date_input("Data:", datetime.now())
+        data_selezionata = st.date_input("Data:", datetime.now(), key="date_timb")
     with col_mod:
         modalita = st.radio("Modalità di lavoro:", ["In Sede", "Smart Working", "Trasferta"], horizontal=True)
 
@@ -51,52 +97,95 @@ with tab1:
             st.info(f"👤 Dipendente riconosciuto: **{dipendente}**")
             
             col1, col2 = st.columns(2)
-            
             data_str = data_selezionata.strftime("%Y-%m-%d")
             data_formatted = data_selezionata.strftime("%d/%m/%Y")
             
             with col1:
                 if st.button("🟢 INGRESSO", use_container_width=True, type="primary"):
                     ora_attuale = datetime.now().strftime("%H:%M:%S")
-                    
                     nuovo_record = pd.DataFrame([[data_str, ora_attuale, dipendente, "INGRESSO", modalita]], 
                                                 columns=["Data", "Ora", "Dipendente", "Tipo", "Modalita"])
                     nuovo_record.to_csv(DATA_FILE, mode='a', header=False, index=False)
-                    
                     st.success(f"✅ INGRESSO registrato per **{dipendente}** il **{data_formatted}** alle **{ora_attuale}** ({modalita})")
 
             with col2:
                 if st.button("🔴 USCITA", use_container_width=True):
                     ora_attuale = datetime.now().strftime("%H:%M:%S")
-                    
                     nuovo_record = pd.DataFrame([[data_str, ora_attuale, dipendente, "USCITA", modalita]], 
                                                 columns=["Data", "Ora", "Dipendente", "Tipo", "Modalita"])
                     nuovo_record.to_csv(DATA_FILE, mode='a', header=False, index=False)
-                    
                     st.warning(f"🛑 USCITA registrata per **{dipendente}** il **{data_formatted}** alle **{ora_attuale}** ({modalita})")
         else:
             st.error("❌ PIN non valido. Riprova.")
 
+# --- TAB 2: RICHIESTE FERIE / PERMESSI / MALATTIA ---
 with tab2:
-    st.subheader("Registro Timbrature e Download Excel")
+    st.subheader("Invia una richiesta di Giustificativo")
     
-    password = st.text_input("Inserisci Password Amministratore:", type="password")
+    col_pin_req, col_tipo = st.columns([1.5, 2])
+    with col_pin_req:
+        pin_richiesta = st.text_input("Inserisci il tuo PIN Personale:", type="password", max_chars=4, key="pin_req")
+    with col_tipo:
+        tipo_giustificativo = st.selectbox("Tipo Giustificativo:", ["Ferie", "Permesso (ROL)", "Malattia", "Altro"])
+
+    if pin_richiesta:
+        if pin_richiesta in DIPENDENTI_PIN:
+            dipendente = DIPENDENTI_PIN[pin_richiesta]
+            st.info(f"👤 Richiesta a nome di: **{dipendente}**")
+            
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                d_inizio = st.date_input("Data Inizio:", date.today())
+            with c2:
+                d_fine = st.date_input("Data Fine:", date.today())
+            with c3:
+                ore_richiesta = st.number_input("Ore (se permesso orario):", min_value=0.0, max_value=8.0, step=0.5, value=8.0)
+                
+            note = st.text_area("Note / Motivazione (opzionale):")
+            
+            if st.button("📩 Invia Richiesta all'Amministratore", type="primary"):
+                req_id = int(datetime.now().timestamp())
+                d_rich = datetime.now().strftime("%Y-%m-%d %H:%M")
+                
+                nuova_richiesta = pd.DataFrame([[req_id, d_rich, dipendente, tipo_giustificativo, 
+                                                 d_inizio.strftime("%Y-%m-%d"), d_fine.strftime("%Y-%m-%d"), 
+                                                 ore_richiesta, note, "IN ATTESA"]], 
+                                               columns=["ID", "Data_Richiesta", "Dipendente", "Tipo", "Data_Inizio", "Data_Fine", "Ore", "Note", "Stato"])
+                
+                nuova_richiesta.to_csv(RICHIESTE_FILE, mode='a', header=False, index=False)
+                st.success(f"✅ Richiesta inviata con successo! In attesa di approvazione dall'amministratore.")
+        else:
+            st.error("❌ PIN non valido.")
+
+# --- TAB 3: AREA AMMINISTRATORE ---
+with tab3:
+    st.subheader("Gestione Amministrazione & Calcolo Ore")
+    
+    password = st.text_input("Inserisci Password Amministratore:", type="password", key="pass_admin")
     
     if password == "1234":
-        df = pd.read_csv(DATA_FILE)
-        st.dataframe(df, use_container_width=True)
+        st.markdown("---")
+        st.write("### 📩 Richieste In Sospeso (Ferie, Permessi, Malattia)")
         
-        if not df.empty:
-            @st.cache_data
-            def convert_df(df_to_convert):
-                return df_to_convert.to_csv(index=False).encode('utf-8')
-
-            csv_data = convert_df(df)
-            st.download_button(
-                label="📥 Scarica Dati (CSV/Excel)",
-                data=csv_data,
-                file_name=f"Presenze_{datetime.now().strftime('%Y_%m')}.csv",
-                mime='text/csv',
-            )
-    elif password != "":
-        st.error("Password errata.")
+        df_rich = pd.read_csv(RICHIESTE_FILE)
+        richieste_sospese = df_rich[df_rich["Stato"] == "IN ATTESA"]
+        
+        if richieste_sospese.empty:
+            st.success("🎉 Nessuna richiesta in attesa di approvazione.")
+        else:
+            for idx, row in richieste_sospese.iterrows():
+                with st.expander(f"📌 {row['Tipo']} - {row['Dipendente']} ({row['Data_Inizio']} -> {row['Data_Fine']})"):
+                    st.write(f"**Dipendente:** {row['Dipendente']}")
+                    st.write(f"**Tipo:** {row['Tipo']}")
+                    st.write(f"**Periodo:** dal {row['Data_Inizio']} al {row['Data_Fine']} ({row['Ore']} ore)")
+                    st.write(f"**Note:** {row['Note']}")
+                    
+                    col_app, col_rif = st.columns(2)
+                    with col_app:
+                        if st.button("✅ Approva", key=f"app_{row['ID']}"):
+                            df_rich.loc[df_rich["ID"] == row["ID"], "Stato"] = "APPROVATO"
+                            df_rich.to_csv(RICHIESTE_FILE, index=False)
+                            st.success("Richiesta Approvata!")
+                            st.rerun()
+                    with col_rif:
+                        if st.button("❌ Rifiuta
