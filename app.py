@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 import os
 
 st.set_page_config(page_title="Rilevazione Presenze & Giustificativi", page_icon="⏱️", layout="wide")
@@ -39,7 +39,6 @@ def calcola_ore_e_straordinari(df_timb, ore_giornaliere_standard=8.0):
     if df_timb.empty:
         return pd.DataFrame()
     
-    # Ordina per data e ora
     df = df_timb.copy()
     df['Datetime'] = pd.to_datetime(df['Data'] + ' ' + df['Ora'])
     df = df.sort_values(['Dipendente', 'Datetime'])
@@ -51,17 +50,12 @@ def calcola_ore_e_straordinari(df_timb, ore_giornaliere_standard=8.0):
         uscite = group[group['Tipo'] == 'USCITA']['Datetime'].tolist()
         
         totale_secondi = 0
-        # Accoppia gli ingressi e le uscite
         for ing, usc in zip(ingressi, uscite):
             if usc > ing:
                 totale_secondi += (usc - ing).total_seconds()
         
         ore_effettive = totale_secondi / 3600.0
-        
-        # Calcolo straordinario con regola della mezza ora piena (30 min = 0.5 ore)
         straordinario_grezzo = max(0.0, ore_effettive - ore_giornaliere_standard)
-        
-        # Arrotondamento per difetto ai blocchi di 0.5 ore (30 min)
         straordinario_approvato = (straordinario_grezzo // 0.5) * 0.5
         
         report_rows.append({
@@ -101,22 +95,22 @@ with tab1:
             data_formatted = data_selezionata.strftime("%d/%m/%Y")
             
             with col1:
-                if st.button("🟢 INGRESSO", use_container_width=True, type="primary"):
+                if st.button("INGRESSO", use_container_width=True, type="primary"):
                     ora_attuale = datetime.now().strftime("%H:%M:%S")
                     nuovo_record = pd.DataFrame([[data_str, ora_attuale, dipendente, "INGRESSO", modalita]], 
                                                 columns=["Data", "Ora", "Dipendente", "Tipo", "Modalita"])
                     nuovo_record.to_csv(DATA_FILE, mode='a', header=False, index=False)
-                    st.success(f"✅ INGRESSO registrato per **{dipendente}** il **{data_formatted}** alle **{ora_attuale}** ({modalita})")
+                    st.success(f"INGRESSO registrato per **{dipendente}** il **{data_formatted}** alle **{ora_attuale}** ({modalita})")
 
             with col2:
-                if st.button("🔴 USCITA", use_container_width=True):
+                if st.button("USCITA", use_container_width=True):
                     ora_attuale = datetime.now().strftime("%H:%M:%S")
                     nuovo_record = pd.DataFrame([[data_str, ora_attuale, dipendente, "USCITA", modalita]], 
                                                 columns=["Data", "Ora", "Dipendente", "Tipo", "Modalita"])
                     nuovo_record.to_csv(DATA_FILE, mode='a', header=False, index=False)
-                    st.warning(f"🛑 USCITA registrata per **{dipendente}** il **{data_formatted}** alle **{ora_attuale}** ({modalita})")
+                    st.warning(f"USCITA registrata per **{dipendente}** il **{data_formatted}** alle **{ora_attuale}** ({modalita})")
         else:
-            st.error("❌ PIN non valido. Riprova.")
+            st.error("PIN non valido. Riprova.")
 
 # --- TAB 2: RICHIESTE FERIE / PERMESSI / MALATTIA ---
 with tab2:
@@ -143,7 +137,7 @@ with tab2:
                 
             note = st.text_area("Note / Motivazione (opzionale):")
             
-            if st.button("📩 Invia Richiesta all'Amministratore", type="primary"):
+            if st.button("Invia Richiesta all'Amministratore", type="primary"):
                 req_id = int(datetime.now().timestamp())
                 d_rich = datetime.now().strftime("%Y-%m-%d %H:%M")
                 
@@ -153,9 +147,9 @@ with tab2:
                                                columns=["ID", "Data_Richiesta", "Dipendente", "Tipo", "Data_Inizio", "Data_Fine", "Ore", "Note", "Stato"])
                 
                 nuova_richiesta.to_csv(RICHIESTE_FILE, mode='a', header=False, index=False)
-                st.success(f"✅ Richiesta inviata con successo! In attesa di approvazione dall'amministratore.")
+                st.success("Richiesta inviata con successo! In attesa di approvazione dall'amministratore.")
         else:
-            st.error("❌ PIN non valido.")
+            st.error("PIN non valido.")
 
 # --- TAB 3: AREA AMMINISTRATORE ---
 with tab3:
@@ -165,16 +159,16 @@ with tab3:
     
     if password == "1234":
         st.markdown("---")
-        st.write("### 📩 Richieste In Sospeso (Ferie, Permessi, Malattia)")
+        st.write("### Richieste In Sospeso (Ferie, Permessi, Malattia)")
         
         df_rich = pd.read_csv(RICHIESTE_FILE)
         richieste_sospese = df_rich[df_rich["Stato"] == "IN ATTESA"]
         
         if richieste_sospese.empty:
-            st.success("🎉 Nessuna richiesta in attesa di approvazione.")
+            st.success("Nessuna richiesta in attesa di approvazione.")
         else:
             for idx, row in richieste_sospese.iterrows():
-                with st.expander(f"📌 {row['Tipo']} - {row['Dipendente']} ({row['Data_Inizio']} -> {row['Data_Fine']})"):
+                with st.expander(f"{row['Tipo']} - {row['Dipendente']} ({row['Data_Inizio']} -> {row['Data_Fine']})"):
                     st.write(f"**Dipendente:** {row['Dipendente']}")
                     st.write(f"**Tipo:** {row['Tipo']}")
                     st.write(f"**Periodo:** dal {row['Data_Inizio']} al {row['Data_Fine']} ({row['Ore']} ore)")
@@ -182,10 +176,49 @@ with tab3:
                     
                     col_app, col_rif = st.columns(2)
                     with col_app:
-                        if st.button("✅ Approva", key=f"app_{row['ID']}"):
+                        if st.button("Approva", key=f"app_{row['ID']}"):
                             df_rich.loc[df_rich["ID"] == row["ID"], "Stato"] = "APPROVATO"
                             df_rich.to_csv(RICHIESTE_FILE, index=False)
                             st.success("Richiesta Approvata!")
                             st.rerun()
                     with col_rif:
-                        if st.button("❌ Rifiuta
+                        if st.button("Rifiuta", key=f"rif_{row['ID']}"):
+                            df_rich.loc[df_rich["ID"] == row["ID"], "Stato"] = "RIFIUTATO"
+                            df_rich.to_csv(RICHIESTE_FILE, index=False)
+                            st.error("Richiesta Rifiutata!")
+                            st.rerun()
+        
+        st.markdown("---")
+        st.write("### Conteggio Automatico Ore & Straordinari (Soglia 30 min)")
+        df_timb = pd.read_csv(DATA_FILE)
+        
+        df_calcolo = calcola_ore_e_straordinari(df_timb)
+        if not df_calcolo.empty:
+            st.dataframe(df_calcolo, use_container_width=True)
+        else:
+            st.info("Nessun dato di timbratura sufficiente per il calcolo.")
+
+        st.markdown("---")
+        st.write("### Registro Timbri Grezzi")
+        st.dataframe(df_timb, use_container_width=True)
+        
+        col_dn1, col_dn2 = st.columns(2)
+        with col_dn1:
+            if not df_timb.empty:
+                st.download_button(
+                    label="Scarica Report Presenze / Straordinari (CSV)",
+                    data=df_calcolo.to_csv(index=False).encode('utf-8') if not df_calcolo.empty else df_timb.to_csv(index=False).encode('utf-8'),
+                    file_name=f"Report_Presenze_{datetime.now().strftime('%Y_%m')}.csv",
+                    mime='text/csv',
+                )
+        with col_dn2:
+            if not df_rich.empty:
+                st.download_button(
+                    label="Scarica Giustificativi (CSV)",
+                    data=df_rich.to_csv(index=False).encode('utf-8'),
+                    file_name=f"Giustificativi_{datetime.now().strftime('%Y_%m')}.csv",
+                    mime='text/csv',
+                )
+
+    elif password != "":
+        st.error("Password errata.")
