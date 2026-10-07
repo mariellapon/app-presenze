@@ -116,69 +116,69 @@ with tab1:
 with tab2:
     st.subheader("Invia una richiesta di Giustificativo")
     
+    # Intestazione visibile subito a tutti
     col_pin_req, col_tipo = st.columns([1.5, 2])
     with col_pin_req:
         pin_richiesta = st.text_input("Inserisci il tuo PIN Personale:", type="password", max_chars=4, key="pin_req")
     with col_tipo:
         tipo_giustificativo = st.selectbox("Tipo Giustificativo:", ["Permesso (ROL)", "Ferie", "Malattia", "Altro"])
 
-    if pin_richiesta:
-        if pin_richiesta in DIPENDENTI_PIN:
-            dipendente = DIPENDENTI_PIN[pin_richiesta]
-            st.info(f"👤 Richiesta a nome di: **{dipendente}**")
-            
-            st.markdown("---")
-            st.write("### 📅 Dettagli Data e Orario della Richiesta")
-            
-            if tipo_giustificativo == "Permesso (ROL)":
-                c1, c2, c3 = st.columns(3)
-                with c1:
-                    d_inizio = st.date_input("Data del Permesso:", date.today(), key="d_permesso")
-                    d_fine = d_inizio
-                with c2:
-                    t_inizio = st.time_input("Ora Inizio Permesso:", time(9, 0), key="t_ini")
-                with c3:
-                    t_fine = st.time_input("Ora Fine Permesso:", time(13, 0), key="t_fin")
-                
-                dt_i = datetime.combine(d_inizio, t_inizio)
-                dt_f = datetime.combine(d_inizio, t_fine)
-                if dt_f > dt_i:
-                    ore_totali = round((dt_f - dt_i).total_seconds() / 3600.0, 2)
-                else:
-                    ore_totali = 0.0
-                
-                ora_ini_str = t_inizio.strftime("%H:%M")
-                ora_fin_str = t_fine.strftime("%H:%M")
-                st.info(f"⏱️ Permesso richiesto per il giorno **{d_inizio.strftime('%d/%m/%Y')}** dalle **{ora_ini_str}** alle **{ora_fin_str}** (Totale: **{ore_totali} ore**)")
-                
-            else:
-                c1, c2 = st.columns(2)
-                with c1:
-                    d_inizio = st.date_input("Data Inizio:", date.today(), key="d_ini_ferie")
-                with c2:
-                    d_fine = st.date_input("Data Fine:", date.today(), key="d_fin_ferie")
-                
-                giorni_totali = (d_fine - d_inizio).days + 1
-                ore_totali = 8.0 * max(1, giorni_totali)
-                ora_ini_str = "08:00"
-                ora_fin_str = "17:00"
-                st.info(f"📅 Giorni selezionati: dal **{d_inizio.strftime('%d/%m/%Y')}** al **{d_fine.strftime('%d/%m/%Y')}** ({giorni_totali} giorno/i - **{ore_totali} ore teoriche**)")
-                
-            note = st.text_area("Note / Motivazione (opzionale):")
-            
-            if st.button("Invia Richiesta all'Amministratore", type="primary"):
-                req_id = int(datetime.now().timestamp())
-                d_rich = datetime.now().strftime("%Y-%m-%d %H:%M")
-                
-                nuova_richiesta = pd.DataFrame([[req_id, d_rich, dipendente, tipo_giustificativo, 
-                                                 d_inizio.strftime("%Y-%m-%d"), d_fine.strftime("%Y-%m-%d"), 
-                                                 ora_ini_str, ora_fin_str, ore_totali, note, "IN ATTESA"]], 
-                                               columns=["ID", "Data_Richiesta", "Dipendente", "Tipo", "Data_Inizio", "Data_Fine", "Ora_Inizio", "Ora_Fine", "Ore", "Note", "Stato"])
-                
-                nuova_richiesta.to_csv(RICHIESTE_FILE, mode='a', header=not os.path.exists(RICHIESTE_FILE) or os.stat(RICHIESTE_FILE).st_size == 0, index=False)
-                st.success("✅ Richiesta inviata con successo! In attesa di approvazione dall'amministratore.")
+    st.markdown("---")
+    st.write("### 📅 Selezione Data e Orario della Richiesta")
+    
+    # Sezione Data e Ora sempre VISIBILE da subito
+    if tipo_giustificativo == "Permesso (ROL)":
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            d_inizio = st.date_input("Data del Permesso:", date.today(), key="d_permesso")
+            d_fine = d_inizio
+        with c2:
+            t_inizio = st.time_input("Ora Inizio Permesso:", time(9, 0), key="t_ini")
+        with c3:
+            t_fine = st.time_input("Ora Fine Permesso:", time(13, 0), key="t_fin")
+        
+        dt_i = datetime.combine(d_inizio, t_inizio)
+        dt_f = datetime.combine(d_inizio, t_fine)
+        if dt_f > dt_i:
+            ore_totali = round((dt_f - dt_i).total_seconds() / 3600.0, 2)
         else:
-            st.error("PIN non valido. Inserisci un PIN corretto per procedere.")
+            ore_totali = 0.0
+        
+        ora_ini_str = t_inizio.strftime("%H:%M")
+        ora_fin_str = t_fine.strftime("%H:%M")
+        st.info(f"⏱️ Permesso selezionato per il giorno **{d_inizio.strftime('%d/%m/%Y')}** dalle **{ora_ini_str}** alle **{ora_fin_str}** (Totale: **{ore_totali} ore**)")
+        
+    else:
+        c1, c2 = st.columns(2)
+        with c1:
+            d_inizio = st.date_input("Data Inizio:", date.today(), key="d_ini_ferie")
+        with c2:
+            d_fine = st.date_input("Data Fine:", date.today(), key="d_fin_ferie")
+        
+        giorni_totali = (d_fine - d_inizio).days + 1
+        ore_totali = 8.0 * max(1, giorni_totali)
+        ora_ini_str = "08:00"
+        ora_fin_str = "17:00"
+        st.info(f"📅 Giorni selezionati: dal **{d_inizio.strftime('%d/%m/%Y')}** al **{d_fine.strftime('%d/%m/%Y')}** ({giorni_totali} giorno/i - **{ore_totali} ore teoriche**)")
+        
+    note = st.text_area("Note / Motivazione (opzionale):")
+    
+    # Il controllo del PIN avviene solo alla pressione del pulsante di invio
+    if st.button("Invia Richiesta all'Amministratore", type="primary"):
+        if pin_richiesta and pin_richiesta in DIPENDENTI_PIN:
+            dipendente = DIPENDENTI_PIN[pin_richiesta]
+            req_id = int(datetime.now().timestamp())
+            d_rich = datetime.now().strftime("%Y-%m-%d %H:%M")
+            
+            nuova_richiesta = pd.DataFrame([[req_id, d_rich, dipendente, tipo_giustificativo, 
+                                             d_inizio.strftime("%Y-%m-%d"), d_fine.strftime("%Y-%m-%d"), 
+                                             ora_ini_str, ora_fin_str, ore_totali, note, "IN ATTESA"]], 
+                                           columns=["ID", "Data_Richiesta", "Dipendente", "Tipo", "Data_Inizio", "Data_Fine", "Ora_Inizio", "Ora_Fine", "Ore", "Note", "Stato"])
+            
+            nuova_richiesta.to_csv(RICHIESTE_FILE, mode='a', header=not os.path.exists(RICHIESTE_FILE) or os.stat(RICHIESTE_FILE).st_size == 0, index=False)
+            st.success(f"✅ Richiesta inviata con successo a nome di **{dipendente}**! In attesa di approvazione.")
+        else:
+            st.error("❌ Inserisci un PIN Personale valido prima di inviare la richiesta.")
 
 # --- TAB 3: AREA AMMINISTRATORE ---
 with tab3:
