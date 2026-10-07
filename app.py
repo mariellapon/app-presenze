@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, date
+from datetime import datetime, date, time
 import os
 
 st.set_page_config(page_title="Rilevazione Presenze & Giustificativi", page_icon="⏱️", layout="wide")
@@ -14,7 +14,7 @@ if not os.path.exists(DATA_FILE):
     df_init.to_csv(DATA_FILE, index=False)
 
 if not os.path.exists(RICHIESTE_FILE):
-    df_rich = pd.DataFrame(columns=["ID", "Data_Richiesta", "Dipendente", "Tipo", "Data_Inizio", "Data_Fine", "Ore", "Note", "Stato"])
+    df_rich = pd.DataFrame(columns=["ID", "Data_Richiesta", "Dipendente", "Tipo", "Data_Inizio", "Data_Fine", "Ora_Inizio", "Ora_Fine", "Ore", "Note", "Stato"])
     df_rich.to_csv(RICHIESTE_FILE, index=False)
 
 # Mappa Dipendenti con PIN personali
@@ -127,13 +127,36 @@ with tab2:
             dipendente = DIPENDENTI_PIN[pin_richiesta]
             st.info(f"👤 Richiesta a nome di: **{dipendente}**")
             
-            c1, c2, c3 = st.columns(3)
+            c1, c2 = st.columns(2)
             with c1:
                 d_inizio = st.date_input("Data Inizio:", date.today())
             with c2:
                 d_fine = st.date_input("Data Fine:", date.today())
-            with c3:
-                ore_richiesta = st.number_input("Ore (se permesso orario):", min_value=0.0, max_value=8.0, step=0.5, value=8.0)
+            
+            # Se è un permesso o la richiesta riguarda un unico giorno, chiedi la fascia oraria
+            if tipo_giustificativo == "Permesso (ROL)" or d_inizio == d_fine:
+                c_t1, c_t2 = st.columns(2)
+                with c_t1:
+                    t_inizio = st.time_input("Ora Inizio:", time(9, 0))
+                with c_t2:
+                    t_fine = st.time_input("Ora Fine:", time(13, 0))
+                
+                # Calcolo automatico delle ore di permesso
+                dt_i = datetime.combine(d_inizio, t_inizio)
+                dt_f = datetime.combine(d_inizio, t_fine)
+                if dt_f > dt_i:
+                    ore_totali = round((dt_f - dt_i).total_seconds() / 3600.0, 2)
+                else:
+                    ore_totali = 0.0
+                
+                st.caption(f"⏱️ Durata calcolata: **{ore_totali} ore**")
+                ora_ini_str = t_inizio.strftime("%H:%M")
+                ora_fin_str = t_fine.strftime("%H:%M")
+            else:
+                ore_totali = 8.0 * ((d_fine - d_inizio).days + 1)
+                ora_ini_str = "00:00"
+                ora_fin_str = "23:59"
+                st.caption(f"📅 Giorni totali: **{(d_fine - d_inizio).days + 1}** ({ore_totali} ore teoriche)")
                 
             note = st.text_area("Note / Motivazione (opzionale):")
             
@@ -141,13 +164,16 @@ with tab2:
                 req_id = int(datetime.now().timestamp())
                 d_rich = datetime.now().strftime("%Y-%m-%d %H:%M")
                 
+                # Leggi file esistente per verificare colonne
+                df_r_exist = pd.read_csv(RICHIESTE_FILE)
+                
                 nuova_richiesta = pd.DataFrame([[req_id, d_rich, dipendente, tipo_giustificativo, 
                                                  d_inizio.strftime("%Y-%m-%d"), d_fine.strftime("%Y-%m-%d"), 
-                                                 ore_richiesta, note, "IN ATTESA"]], 
-                                               columns=["ID", "Data_Richiesta", "Dipendente", "Tipo", "Data_Inizio", "Data_Fine", "Ore", "Note", "Stato"])
+                                                 ora_ini_str, ora_fin_str, ore_totali, note, "IN ATTESA"]], 
+                                               columns=["ID", "Data_Richiesta", "Dipendente", "Tipo", "Data_Inizio", "Data_Fine", "Ora_Inizio", "Ora_Fine", "Ore", "Note", "Stato"])
                 
-                nuova_richiesta.to_csv(RICHIESTE_FILE, mode='a', header=False, index=False)
-                st.success("Richiesta inviata con successo! In attesa di approvazione dall'amministratore.")
+                nuova_richiesta.to_csv(RICHIESTE_FILE, mode='a', header=not os.path.exists(RICHIESTE_FILE) or os.stat(RICHIESTE_FILE).st_size == 0, index=False)
+                st.success(f"Richiesta inviata con successo! Dalle {ora_ini_str} alle {ora_fin_str} ({ore_totali} ore). In attesa di approvazione.")
         else:
             st.error("PIN non valido.")
 
@@ -161,17 +187,25 @@ with tab3:
         st.markdown("---")
         st.write("### Richieste In Sospeso (Ferie, Permessi, Malattia)")
         
-        df_rich = pd.read_csv(RICHIESTE_FILE)
-        richieste_sospese = df_rich[df_rich["Stato"] == "IN ATTESA"]
+        try:
+            df_rich = pd.read_csv(RICHIESTE_FILE)
+        except Exception:
+            df_rich = pd.DataFrame()
+            
+        if not df_rich.empty and "Stato" in df_rich.columns:
+            richieste_sospese = df_rich[df_rich["Stato"] == "IN ATTESA"]
+        else:
+            richieste_sospese = pd.DataFrame()
         
         if richieste_sospese.empty:
             st.success("Nessuna richiesta in attesa di approvazione.")
         else:
             for idx, row in richieste_sospese.iterrows():
-                with st.expander(f"{row['Tipo']} - {row['Dipendente']} ({row['Data_Inizio']} -> {row['Data_Fine']})"):
+                ora_info = f" dalle {row['Ora_Inizio']} alle {row['Ora_Fine']}" if 'Ora_Inizio' in row and pd.notna(row['Ora_Inizio']) else ""
+                with st.expander(f"{row['Tipo']} - {row['Dipendente']} ({row['Data_Inizio']} -> {row['Data_Fine']}{ora_info})"):
                     st.write(f"**Dipendente:** {row['Dipendente']}")
                     st.write(f"**Tipo:** {row['Tipo']}")
-                    st.write(f"**Periodo:** dal {row['Data_Inizio']} al {row['Data_Fine']} ({row['Ore']} ore)")
+                    st.write(f"**Periodo:** dal {row['Data_Inizio']} al {row['Data_Fine']} {ora_info} ({row['Ore']} ore)")
                     st.write(f"**Note:** {row['Note']}")
                     
                     col_app, col_rif = st.columns(2)
