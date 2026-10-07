@@ -85,9 +85,11 @@ with tab1:
     with col_mod:
         modalita = st.radio("Modalità di lavoro:", ["In Sede", "Smart Working", "Trasferta"], horizontal=True)
 
-    if pin_inserito:
-        if pin_inserito in DIPENDENTI_PIN:
-            dipendente = DIPENDENTI_PIN[pin_inserito]
+    pin_pulisce_timb = pin_inserito.strip() if pin_inserito else ""
+
+    if pin_pulisce_timb:
+        if pin_pulisce_timb in DIPENDENTI_PIN:
+            dipendente = DIPENDENTI_PIN[pin_pulisce_timb]
             st.info(f"👤 Dipendente riconosciuto: **{dipendente}**")
             
             col1, col2 = st.columns(2)
@@ -116,17 +118,24 @@ with tab1:
 with tab2:
     st.subheader("Invia una richiesta di Giustificativo")
     
-    # Intestazione visibile subito a tutti
     col_pin_req, col_tipo = st.columns([1.5, 2])
     with col_pin_req:
         pin_richiesta = st.text_input("Inserisci il tuo PIN Personale:", type="password", max_chars=4, key="pin_req")
     with col_tipo:
         tipo_giustificativo = st.selectbox("Tipo Giustificativo:", ["Permesso (ROL)", "Ferie", "Malattia", "Altro"])
 
+    pin_pulito = pin_richiesta.strip() if pin_richiesta else ""
+    
+    # Riconoscimento immediato del dipendente
+    if pin_pulito in DIPENDENTI_PIN:
+        dipendente_req = DIPENDENTI_PIN[pin_pulito]
+        st.success(f"👤 Dipendente riconosciuto: **{dipendente_req}**")
+    elif pin_pulito != "":
+        st.error("❌ PIN inserito non valido.")
+
     st.markdown("---")
     st.write("### 📅 Selezione Data e Orario della Richiesta")
     
-    # Sezione Data e Ora sempre VISIBILE da subito
     if tipo_giustificativo == "Permesso (ROL)":
         c1, c2, c3 = st.columns(3)
         with c1:
@@ -163,10 +172,9 @@ with tab2:
         
     note = st.text_area("Note / Motivazione (opzionale):")
     
-    # Il controllo del PIN avviene solo alla pressione del pulsante di invio
     if st.button("Invia Richiesta all'Amministratore", type="primary"):
-        if pin_richiesta and pin_richiesta in DIPENDENTI_PIN:
-            dipendente = DIPENDENTI_PIN[pin_richiesta]
+        if pin_pulito in DIPENDENTI_PIN:
+            dipendente = DIPENDENTI_PIN[pin_pulito]
             req_id = int(datetime.now().timestamp())
             d_rich = datetime.now().strftime("%Y-%m-%d %H:%M")
             
@@ -176,9 +184,9 @@ with tab2:
                                            columns=["ID", "Data_Richiesta", "Dipendente", "Tipo", "Data_Inizio", "Data_Fine", "Ora_Inizio", "Ora_Fine", "Ore", "Note", "Stato"])
             
             nuova_richiesta.to_csv(RICHIESTE_FILE, mode='a', header=not os.path.exists(RICHIESTE_FILE) or os.stat(RICHIESTE_FILE).st_size == 0, index=False)
-            st.success(f"✅ Richiesta inviata con successo a nome di **{dipendente}**! In attesa di approvazione.")
+            st.success(f"✅ Richiesta inviata con successo per **{dipendente}**! In attesa di approvazione dall'amministratore.")
         else:
-            st.error("❌ Inserisci un PIN Personale valido prima di inviare la richiesta.")
+            st.error("❌ PIN non valido. Inserisci un PIN corretto prima di inviare la richiesta.")
 
 # --- TAB 3: AREA AMMINISTRATORE ---
 with tab3:
