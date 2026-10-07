@@ -34,6 +34,8 @@ DIPENDENTI_PIN = {
     "1013": "SANTOLINI MAURO"
 }
 
+LISTA_DIPENDENTI = sorted(list(DIPENDENTI_PIN.values()))
+
 # Funzione per calcolare gli straordinari arrotondati ai 30 minuti
 def calcola_ore_e_straordinari(df_timb, ore_giornaliere_standard=8.0):
     if df_timb.empty:
@@ -76,62 +78,59 @@ tab1, tab2, tab3 = st.tabs(["📲 Timbratura", "📝 Richiesta Ferie / Permessi 
 with tab1:
     st.subheader("Registra il tuo ingresso o la tua uscita")
     
-    col_pin, col_date, col_mod = st.columns([1.5, 1, 1.5])
+    col_dip, col_pin, col_date, col_mod = st.columns([2, 1, 1, 1.5])
     
+    with col_dip:
+        dip_selezionato_timb = st.selectbox("Seleziona Dipendente:", ["-- Seleziona Nome --"] + LISTA_DIPENDENTI, key="sel_dip_timb")
     with col_pin:
-        pin_inserito = st.text_input("Inserisci il tuo PIN Personale:", type="password", max_chars=4, key="pin_timb")
+        pin_timb = st.text_input("PIN Personale:", type="password", max_chars=4, key="pin_timb_val")
     with col_date:
         data_selezionata = st.date_input("Data Timbratura:", datetime.now(), key="date_timb")
     with col_mod:
-        modalita = st.radio("Modalità di lavoro:", ["In Sede", "Smart Working", "Trasferta"], horizontal=True)
+        modalita = st.radio("Modalità di lavoro:", ["In Sede", "Smart Working", "Trasferta"], horizontal=True, key="mod_timb")
 
-    pin_pulisce_timb = pin_inserito.strip() if pin_inserito else ""
-
-    if pin_pulisce_timb:
-        if pin_pulisce_timb in DIPENDENTI_PIN:
-            dipendente = DIPENDENTI_PIN[pin_pulisce_timb]
-            st.info(f"👤 Dipendente riconosciuto: **{dipendente}**")
-            
-            col1, col2 = st.columns(2)
-            data_str = data_selezionata.strftime("%Y-%m-%d")
-            data_formatted = data_selezionata.strftime("%d/%m/%Y")
-            
-            with col1:
-                if st.button("INGRESSO", use_container_width=True, type="primary"):
+    if dip_selezionato_timb != "-- Seleziona Nome --":
+        col1, col2 = st.columns(2)
+        data_str = data_selezionata.strftime("%Y-%m-%d")
+        data_formatted = data_selezionata.strftime("%d/%m/%Y")
+        
+        with col1:
+            if st.button("INGRESSO", use_container_width=True, type="primary", key="btn_ing"):
+                # Verifica PIN
+                pin_corretto = [k for k, v in DIPENDENTI_PIN.items() if v == dip_selezionato_timb][0]
+                if pin_timb.strip() == pin_corretto:
                     ora_attuale = datetime.now().strftime("%H:%M:%S")
-                    nuovo_record = pd.DataFrame([[data_str, ora_attuale, dipendente, "INGRESSO", modalita]], 
+                    nuovo_record = pd.DataFrame([[data_str, ora_attuale, dip_selezionato_timb, "INGRESSO", modalita]], 
                                                 columns=["Data", "Ora", "Dipendente", "Tipo", "Modalita"])
                     nuovo_record.to_csv(DATA_FILE, mode='a', header=False, index=False)
-                    st.success(f"INGRESSO registrato per **{dipendente}** il **{data_formatted}** alle **{ora_attuale}** ({modalita})")
+                    st.success(f"✅ INGRESSO registrato per **{dip_selezionato_timb}** il **{data_formatted}** alle **{ora_attuale}** ({modalita})")
+                else:
+                    st.error("❌ PIN non corretto per il dipendente selezionato.")
 
-            with col2:
-                if st.button("USCITA", use_container_width=True):
+        with col2:
+            if st.button("USCITA", use_container_width=True, key="btn_usc"):
+                pin_corretto = [k for k, v in DIPENDENTI_PIN.items() if v == dip_selezionato_timb][0]
+                if pin_timb.strip() == pin_corretto:
                     ora_attuale = datetime.now().strftime("%H:%M:%S")
-                    nuovo_record = pd.DataFrame([[data_str, ora_attuale, dipendente, "USCITA", modalita]], 
+                    nuovo_record = pd.DataFrame([[data_str, ora_attuale, dip_selezionato_timb, "USCITA", modalita]], 
                                                 columns=["Data", "Ora", "Dipendente", "Tipo", "Modalita"])
                     nuovo_record.to_csv(DATA_FILE, mode='a', header=False, index=False)
-                    st.warning(f"USCITA registrata per **{dipendente}** il **{data_formatted}** alle **{ora_attuale}** ({modalita})")
-        else:
-            st.error("PIN non valido. Riprova.")
+                    st.warning(f"🛑 USCITA registrata per **{dip_selezionato_timb}** il **{data_formatted}** alle **{ora_attuale}** ({modalita})")
+                else:
+                    st.error("❌ PIN non corretto per il dipendente selezionato.")
 
 # --- TAB 2: RICHIESTE FERIE / PERMESSI / MALATTIA ---
 with tab2:
     st.subheader("Invia una richiesta di Giustificativo")
     
-    col_pin_req, col_tipo = st.columns([1.5, 2])
-    with col_pin_req:
-        pin_richiesta = st.text_input("Inserisci il tuo PIN Personale:", type="password", max_chars=4, key="pin_req")
-    with col_tipo:
-        tipo_giustificativo = st.selectbox("Tipo Giustificativo:", ["Permesso (ROL)", "Ferie", "Malattia", "Altro"])
-
-    pin_pulito = pin_richiesta.strip() if pin_richiesta else ""
+    col_dip_r, col_pin_r, col_tipo_r = st.columns([2, 1, 1.5])
     
-    # Riconoscimento immediato del dipendente
-    if pin_pulito in DIPENDENTI_PIN:
-        dipendente_req = DIPENDENTI_PIN[pin_pulito]
-        st.success(f"👤 Dipendente riconosciuto: **{dipendente_req}**")
-    elif pin_pulito != "":
-        st.error("❌ PIN inserito non valido.")
+    with col_dip_r:
+        dip_req = st.selectbox("Seleziona Dipendente:", ["-- Seleziona Nome --"] + LISTA_DIPENDENTI, key="sel_dip_req")
+    with col_pin_r:
+        pin_req = st.text_input("PIN Personale:", type="password", max_chars=4, key="pin_req_val")
+    with col_tipo_r:
+        tipo_giustificativo = st.selectbox("Tipo Giustificativo:", ["Permesso (ROL)", "Ferie", "Malattia", "Altro"], key="sel_tipo_req")
 
     st.markdown("---")
     st.write("### 📅 Selezione Data e Orario della Richiesta")
@@ -139,12 +138,12 @@ with tab2:
     if tipo_giustificativo == "Permesso (ROL)":
         c1, c2, c3 = st.columns(3)
         with c1:
-            d_inizio = st.date_input("Data del Permesso:", date.today(), key="d_permesso")
+            d_inizio = st.date_input("Data del Permesso:", date.today(), key="d_permesso_val")
             d_fine = d_inizio
         with c2:
-            t_inizio = st.time_input("Ora Inizio Permesso:", time(9, 0), key="t_ini")
+            t_inizio = st.time_input("Ora Inizio Permesso:", time(9, 0), key="t_ini_val")
         with c3:
-            t_fine = st.time_input("Ora Fine Permesso:", time(13, 0), key="t_fin")
+            t_fine = st.time_input("Ora Fine Permesso:", time(13, 0), key="t_fin_val")
         
         dt_i = datetime.combine(d_inizio, t_inizio)
         dt_f = datetime.combine(d_inizio, t_fine)
@@ -160,9 +159,9 @@ with tab2:
     else:
         c1, c2 = st.columns(2)
         with c1:
-            d_inizio = st.date_input("Data Inizio:", date.today(), key="d_ini_ferie")
+            d_inizio = st.date_input("Data Inizio:", date.today(), key="d_ini_ferie_val")
         with c2:
-            d_fine = st.date_input("Data Fine:", date.today(), key="d_fin_ferie")
+            d_fine = st.date_input("Data Fine:", date.today(), key="d_fin_ferie_val")
         
         giorni_totali = (d_fine - d_inizio).days + 1
         ore_totali = 8.0 * max(1, giorni_totali)
@@ -170,23 +169,26 @@ with tab2:
         ora_fin_str = "17:00"
         st.info(f"📅 Giorni selezionati: dal **{d_inizio.strftime('%d/%m/%Y')}** al **{d_fine.strftime('%d/%m/%Y')}** ({giorni_totali} giorno/i - **{ore_totali} ore teoriche**)")
         
-    note = st.text_area("Note / Motivazione (opzionale):")
+    note = st.text_area("Note / Motivazione (opzionale):", key="note_req")
     
-    if st.button("Invia Richiesta all'Amministratore", type="primary"):
-        if pin_pulito in DIPENDENTI_PIN:
-            dipendente = DIPENDENTI_PIN[pin_pulito]
-            req_id = int(datetime.now().timestamp())
-            d_rich = datetime.now().strftime("%Y-%m-%d %H:%M")
-            
-            nuova_richiesta = pd.DataFrame([[req_id, d_rich, dipendente, tipo_giustificativo, 
-                                             d_inizio.strftime("%Y-%m-%d"), d_fine.strftime("%Y-%m-%d"), 
-                                             ora_ini_str, ora_fin_str, ore_totali, note, "IN ATTESA"]], 
-                                           columns=["ID", "Data_Richiesta", "Dipendente", "Tipo", "Data_Inizio", "Data_Fine", "Ora_Inizio", "Ora_Fine", "Ore", "Note", "Stato"])
-            
-            nuova_richiesta.to_csv(RICHIESTE_FILE, mode='a', header=not os.path.exists(RICHIESTE_FILE) or os.stat(RICHIESTE_FILE).st_size == 0, index=False)
-            st.success(f"✅ Richiesta inviata con successo per **{dipendente}**! In attesa di approvazione dall'amministratore.")
+    if st.button("Invia Richiesta all'Amministratore", type="primary", key="btn_send_req"):
+        if dip_req == "-- Seleziona Nome --":
+            st.error("❌ Seleziona prima il tuo nome dall'elenco.")
         else:
-            st.error("❌ PIN non valido. Inserisci un PIN corretto prima di inviare la richiesta.")
+            pin_corretto = [k for k, v in DIPENDENTI_PIN.items() if v == dip_req][0]
+            if pin_req.strip() == pin_corretto:
+                req_id = int(datetime.now().timestamp())
+                d_rich = datetime.now().strftime("%Y-%m-%d %H:%M")
+                
+                nuova_richiesta = pd.DataFrame([[req_id, d_rich, dip_req, tipo_giustificativo, 
+                                                 d_inizio.strftime("%Y-%m-%d"), d_fine.strftime("%Y-%m-%d"), 
+                                                 ora_ini_str, ora_fin_str, ore_totali, note, "IN ATTESA"]], 
+                                               columns=["ID", "Data_Richiesta", "Dipendente", "Tipo", "Data_Inizio", "Data_Fine", "Ora_Inizio", "Ora_Fine", "Ore", "Note", "Stato"])
+                
+                nuova_richiesta.to_csv(RICHIESTE_FILE, mode='a', header=not os.path.exists(RICHIESTE_FILE) or os.stat(RICHIESTE_FILE).st_size == 0, index=False)
+                st.success(f"✅ Richiesta inviata con successo per **{dip_req}**! In attesa di approvazione dall'amministratore.")
+            else:
+                st.error("❌ PIN Personale errato. Inserisci il PIN corretto associato al tuo nome.")
 
 # --- TAB 3: AREA AMMINISTRATORE ---
 with tab3:
@@ -235,7 +237,10 @@ with tab3:
         
         st.markdown("---")
         st.write("### Conteggio Automatico Ore & Straordinari (Soglia 30 min)")
-        df_timb = pd.read_csv(DATA_FILE)
+        try:
+            df_timb = pd.read_csv(DATA_FILE)
+        except Exception:
+            df_timb = pd.DataFrame()
         
         df_calcolo = calcola_ore_e_straordinari(df_timb)
         if not df_calcolo.empty:
