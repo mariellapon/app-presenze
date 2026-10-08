@@ -374,6 +374,15 @@ with tab4:
         st.write("### Storico Completo Giustificativi")
         if not df_rich.empty:
             st.dataframe(df_rich, use_container_width=True)
-            
+
+        st.markdown("---")
+        st.write("### ⚠️ Manutenzione Dati Presenze")
+        st.caption("Usa questo pulsante per svuotare lo storico delle timbrature di prova.")
+        if st.button("️ Svuota Storico Timbrature (Reset)", type="secondary"):
+            df_init = pd.DataFrame(columns=["Data", "Ora", "Dipendente", "Tipo"])
+            df_init.to_csv(DATA_FILE, index=False)
+            st.success("Storico timbrature resettato con successo!")
+            st.rerun()
+
     elif password != "":
         st.error("Password errata.")
