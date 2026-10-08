@@ -1,9 +1,17 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date, time
+from zoneinfo import ZoneInfo  # Gestione fuso orario italiano
 import os
 
 st.set_page_config(page_title="Rilevazione Presenze & Documenti", page_icon="⏱️", layout="wide")
+
+# Definizione del fuso orario italiano (Europe/Rome)
+TZ_ITALIA = ZoneInfo("Europe/Rome")
+
+def get_now_italy():
+    """Restituisce l'ora corrente sincronizzata con il fuso orario italiano."""
+    return datetime.now(TZ_ITALIA)
 
 # File e Cartelle di sistema
 DATA_FILE = "presenze_log.csv"
@@ -90,7 +98,7 @@ with tab1:
         with col_pin:
             pin_timb_in = st.text_input("Inserisci PIN Personale (es. 1012):", type="password", max_chars=4)
         with col_date:
-            data_selezionata = st.date_input("Data Timbratura:", datetime.now())
+            data_selezionata = st.date_input("Data Timbratura:", get_now_italy().date())
 
         st.markdown("---")
         col_b1, col_b2 = st.columns(2)
@@ -111,7 +119,7 @@ with tab1:
 
             tipo_timb = "INGRESSO" if btn_ing else "USCITA"
             data_str = data_selezionata.strftime("%Y-%m-%d")
-            ora_attuale = datetime.now().strftime("%H:%M:%S")
+            ora_attuale = get_now_italy().strftime("%H:%M:%S")
             
             nuovo_record = pd.DataFrame([[data_str, ora_attuale, dipendente, tipo_timb]], columns=["Data", "Ora", "Dipendente", "Tipo"])
             nuovo_record.to_csv(DATA_FILE, mode='a', header=False, index=False)
@@ -138,10 +146,10 @@ with tab2:
         st.write("### Selezione Data e Orario")
         c1, c2 = st.columns(2)
         with c1:
-            d_inizio = st.date_input("Data Inizio / Giorno Permesso:", date.today())
+            d_inizio = st.date_input("Data Inizio / Giorno Permesso:", get_now_italy().date())
             t_inizio = st.time_input("Ora Inizio (solo per Permesso):", time(9, 0))
         with c2:
-            d_fine = st.date_input("Data Fine (solo per Ferie/Smart/Malattia):", date.today())
+            d_fine = st.date_input("Data Fine (solo per Ferie/Smart/Malattia):", get_now_italy().date())
             t_fine = st.time_input("Ora Fine (solo per Permesso):", time(13, 0))
 
         note = st.text_area("Note / Motivazione (opzionale):")
@@ -167,7 +175,7 @@ with tab2:
                 ore_totali = ore_std * giorni_totali
                 ora_ini_str, ora_fin_str = "08:00", "17:00"
 
-            req_id = int(datetime.now().timestamp())
+            req_id = int(get_now_italy().timestamp())
             nome_file_salvato = ""
             
             if file_allegato is not None:
@@ -177,7 +185,7 @@ with tab2:
                 with open(path_salvataggio, "wb") as f:
                     f.write(file_allegato.getbuffer())
 
-            d_rich = datetime.now().strftime("%Y-%m-%d %H:%M")
+            d_rich = get_now_italy().strftime("%Y-%m-%d %H:%M")
             nuova_richiesta = pd.DataFrame([[req_id, d_rich, dipendente, tipo_giustificativo, 
                                              d_inizio.strftime("%Y-%m-%d"), d_fine_calc.strftime("%Y-%m-%d"), 
                                              ora_ini_str, ora_fin_str, ore_totali, note, nome_file_salvato, "IN ATTESA"]], 
