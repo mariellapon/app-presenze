@@ -4,13 +4,16 @@ from datetime import datetime, date, time
 from zoneinfo import ZoneInfo
 import os
 
+# Impostazione pagina
 st.set_page_config(page_title="Rilevazione Presenze & Documenti", page_icon="⏱️", layout="wide")
 
+# Fuso Orario Italiano
 TZ_ITALIA = ZoneInfo("Europe/Rome")
 
 def get_now_italy():
     return datetime.now(TZ_ITALIA)
 
+# File e Cartelle di sistema
 DATA_FILE = "presenze_log.csv"
 RICHIESTE_FILE = "richieste_log.csv"
 DIR_ALLEGATI = "allegati_richieste"
@@ -28,6 +31,7 @@ if not os.path.exists(RICHIESTE_FILE):
     df_rich = pd.DataFrame(columns=["ID", "Data_Richiesta", "Dipendente", "Tipo", "Data_Inizio", "Data_Fine", "Ora_Inizio", "Ora_Fine", "Ore", "Note", "Allegato", "Stato"])
     df_rich.to_csv(RICHIESTE_FILE, index=False)
 
+# Mappa Dipendenti con PIN personali e dati contrattuali
 DIPENDENTI_PIN = {
     "1001": {"nome": "AGOSTINELLI FEDERICA", "ore_std": 8.0, "commerciale": False},
     "1002": {"nome": "BISCHI MICHELE", "ore_std": 8.0, "commerciale": True},
@@ -65,15 +69,14 @@ def elabora_presenze_e_dettagli(df_timb):
         uscite = group[group['Tipo'] == 'USCITA'].to_dict('records')
         
         totale_secondi_giorno = 0
-        
         idx_usc = 0
+        
         for ing in ingressi:
-            # Trova la prima uscita successiva all'ingresso
             while idx_usc < len(uscite) and uscite[idx_usc]['Datetime'] <= ing['Datetime']:
                 idx_usc += 1
                 
             ora_ing_str = ing['Ora']
-            ora_usc_str = "In corso / Mancante"
+            ora_usc_str = "In corso"
             ore_sessione = 0.0
             
             if idx_usc < len(uscite):
@@ -89,7 +92,7 @@ def elabora_presenze_e_dettagli(df_timb):
                 'Dipendente': dip,
                 'Ora Ingresso': ora_ing_str,
                 'Ora Uscita': ora_usc_str,
-                'Ore Sessione': ore_sessione
+                'Ore Sessione': ore_sessione if ora_usc_str != "In corso" else "In corso"
             })
 
         ore_totali_giorno = round(totale_secondi_giorno / 3600.0, 2)
@@ -145,7 +148,7 @@ with tab1:
             ora_attuale = get_now_italy().strftime("%H:%M:%S")
             
             nuovo_record = pd.DataFrame([[data_str, ora_attuale, dipendente, tipo_timb]], columns=["Data", "Ora", "Dipendente", "Tipo"])
-            nuovo_record.to_csv(DATA_FILE, mode='a', header=False, index=False)
+            nuovo_record.to_csv(DATA_FILE, mode='a', header=not os.path.exists(DATA_FILE) or os.stat(DATA_FILE).st_size == 0, index=False)
             
             if tipo_timb == "INGRESSO":
                 st.success(f"INGRESSO registrato per **{dipendente}** alle **{ora_attuale}**")
@@ -317,7 +320,7 @@ with tab4:
                             st.rerun()
 
         st.markdown("---")
-        st.write("### Storico Timbrature Dettagliate (Ingressi e Uscite)")
+        st.write("### Storico Timbrature Dettagliate e Calcolo Presenze")
         try:
             df_timb = pd.read_csv(DATA_FILE)
         except Exception:
@@ -326,10 +329,7 @@ with tab4:
         df_dettaglio, df_riepilogo = elabora_presenze_e_dettagli(df_timb)
 
         if not df_dettaglio.empty:
-            # Filtro per dipendente nell'area admin per consultazione rapida
-            elenco_dip = ["TUTTI"] + sorted(list(DIPENDENTI_PIN.values()), key=lambda x: x["nome"])
-            nomicompleti = ["TUTTI"] + [d["nome"] for d in list(DIPENDENTI_PIN.values())]
-            
+            nomicompleti = ["TUTTI"] + sorted([d["nome"] for d in list(DIPENDENTI_PIN.values())])
             dip_filtro = st.selectbox("Filtra Storico per Dipendente:", nomicompleti)
             
             if dip_filtro != "TUTTI":
