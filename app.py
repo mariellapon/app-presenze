@@ -1,19 +1,16 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date, time
-from zoneinfo import ZoneInfo  # Gestione fuso orario italiano
+from zoneinfo import ZoneInfo
 import os
 
 st.set_page_config(page_title="Rilevazione Presenze & Documenti", page_icon="⏱️", layout="wide")
 
-# Definizione del fuso orario italiano (Europe/Rome)
 TZ_ITALIA = ZoneInfo("Europe/Rome")
 
 def get_now_italy():
-    """Restituisce l'ora corrente sincronizzata con il fuso orario italiano."""
     return datetime.now(TZ_ITALIA)
 
-# File e Cartelle di sistema
 DATA_FILE = "presenze_log.csv"
 RICHIESTE_FILE = "richieste_log.csv"
 DIR_ALLEGATI = "allegati_richieste"
@@ -23,7 +20,6 @@ for directory in [DIR_ALLEGATI, DIR_DOCUMENTI]:
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-# Inizializzazione file CSV se non esistono
 if not os.path.exists(DATA_FILE):
     df_init = pd.DataFrame(columns=["Data", "Ora", "Dipendente", "Tipo"])
     df_init.to_csv(DATA_FILE, index=False)
@@ -32,18 +28,17 @@ if not os.path.exists(RICHIESTE_FILE):
     df_rich = pd.DataFrame(columns=["ID", "Data_Richiesta", "Dipendente", "Tipo", "Data_Inizio", "Data_Fine", "Ora_Inizio", "Ora_Fine", "Ore", "Note", "Allegato", "Stato"])
     df_rich.to_csv(RICHIESTE_FILE, index=False)
 
-# Mappa Dipendenti con PIN personali e dati contrattuali
 DIPENDENTI_PIN = {
     "1001": {"nome": "AGOSTINELLI FEDERICA", "ore_std": 8.0, "commerciale": False},
     "1002": {"nome": "BISCHI MICHELE", "ore_std": 8.0, "commerciale": True},
-    "1003": {"nome": "BORINI RAFFAELE", "ore_std": 6.0, "commerciale": True}, # Part-time 6h
+    "1003": {"nome": "BORINI RAFFAELE", "ore_std": 6.0, "commerciale": True},
     "1004": {"nome": "BUGLIONI SARAH", "ore_std": 8.0, "commerciale": False},
     "1005": {"nome": "CUPIDO PATRIZIA", "ore_std": 8.0, "commerciale": False},
     "1006": {"nome": "D'APONTE PAOLO", "ore_std": 8.0, "commerciale": False},
     "1007": {"nome": "MANZOTTI FRANCESCA", "ore_std": 8.0, "commerciale": False},
     "1008": {"nome": "NOVELLI LUCA", "ore_std": 8.0, "commerciale": False},
     "1009": {"nome": "NUZZIELLO CARLO", "ore_std": 8.0, "commerciale": True},
-    "1010": {"nome": "PALLOTTA ANNABELLA", "ore_std": 4.0, "commerciale": False}, # Part-time 4h + Smart variabile
+    "1010": {"nome": "PALLOTTA ANNABELLA", "ore_std": 4.0, "commerciale": False},
     "1011": {"nome": "PIERINI FRANCESCO", "ore_std": 8.0, "commerciale": False},
     "1012": {"nome": "PONTILLO MARIELLA", "ore_std": 8.0, "commerciale": False},
     "1013": {"nome": "SANTOLINI MAURO", "ore_std": 8.0, "commerciale": False}
@@ -51,40 +46,68 @@ DIPENDENTI_PIN = {
 
 MAPPA_NOMI_PIN = {v["nome"]: k for k, v in DIPENDENTI_PIN.items()}
 
-def calcola_ore_e_straordinari(df_timb):
+def elabora_presenze_e_dettagli(df_timb):
     if df_timb.empty:
-        return pd.DataFrame()
+        return pd.DataFrame(), pd.DataFrame()
     
     df = df_timb.copy()
     df['Datetime'] = pd.to_datetime(df['Data'] + ' ' + df['Ora'])
     df = df.sort_values(['Dipendente', 'Datetime'])
     
-    report_rows = []
+    dettagli_rows = []
+    giornaliero_dict = {}
+
     for (dip, dt), group in df.groupby(['Dipendente', 'Data']):
         pin_dip = MAPPA_NOMI_PIN.get(dip)
         ore_std = DIPENDENTI_PIN[pin_dip]["ore_std"] if pin_dip else 8.0
         
-        ingressi = group[group['Tipo'] == 'INGRESSO']['Datetime'].tolist()
-        uscite = group[group['Tipo'] == 'USCITA']['Datetime'].tolist()
+        ingressi = group[group['Tipo'] == 'INGRESSO'].to_dict('records')
+        uscite = group[group['Tipo'] == 'USCITA'].to_dict('records')
         
-        totale_secondi = 0
-        for ing, usc in zip(ingressi, uscite):
-            if usc > ing:
-                totale_secondi += (usc - ing).total_seconds()
+        totale_secondi_giorno = 0
         
-        ore_effettive = totale_secondi / 3600.0
-        straordinario_grezzo = max(0.0, ore_effettive - ore_std)
-        straordinario_approvato = (straordinario_grezzo // 0.5) * 0.5
-        
-        report_rows.append({
+        idx_usc = 0
+        for ing in ingressi:
+            # Trova la prima uscita successiva all'ingresso
+            while idx_usc < len(uscite) and uscite[idx_usc]['Datetime'] <= ing['Datetime']:
+                idx_usc += 1
+                
+            ora_ing_str = ing['Ora']
+            ora_usc_str = "In corso / Mancante"
+            ore_sessione = 0.0
+            
+            if idx_usc < len(uscite):
+                usc = uscite[idx_usc]
+                ora_usc_str = usc['Ora']
+                sec = (usc['Datetime'] - ing['Datetime']).total_seconds()
+                ore_sessione = round(sec / 3600.0, 2)
+                totale_secondi_giorno += sec
+                idx_usc += 1
+
+            dettagli_rows.append({
+                'Data': dt,
+                'Dipendente': dip,
+                'Ora Ingresso': ora_ing_str,
+                'Ora Uscita': ora_usc_str,
+                'Ore Sessione': ore_sessione
+            })
+
+        ore_totali_giorno = round(totale_secondi_giorno / 3600.0, 2)
+        straordinario_grezzo = max(0.0, ore_totali_giorno - ore_std)
+        straordinario_30min = (straordinario_grezzo // 0.5) * 0.5
+
+        giornaliero_dict[(dip, dt)] = {
             'Data': dt,
             'Dipendente': dip,
-            'Ore Lavorate Effettive': round(ore_effettive, 2),
-            'Ore Standard Contratto': ore_std,
-            'Straordinario Calcolato (30 min pieni)': straordinario_approvato
-        })
-        
-    return pd.DataFrame(report_rows)
+            'Ore Lavorate Totali': ore_totali_giorno,
+            'Ore Contratto': ore_std,
+            'Straordinario Calcolato': straordinario_30min
+        }
+
+    df_dettaglio = pd.DataFrame(dettagli_rows)
+    df_riepilogo = pd.DataFrame(list(giornaliero_dict.values()))
+    
+    return df_dettaglio, df_riepilogo
 
 st.title("Sistema Presenze, Giustificativi & Documenti")
 
@@ -294,6 +317,38 @@ with tab4:
                             st.rerun()
 
         st.markdown("---")
+        st.write("### Storico Timbrature Dettagliate (Ingressi e Uscite)")
+        try:
+            df_timb = pd.read_csv(DATA_FILE)
+        except Exception:
+            df_timb = pd.DataFrame()
+            
+        df_dettaglio, df_riepilogo = elabora_presenze_e_dettagli(df_timb)
+
+        if not df_dettaglio.empty:
+            # Filtro per dipendente nell'area admin per consultazione rapida
+            elenco_dip = ["TUTTI"] + sorted(list(DIPENDENTI_PIN.values()), key=lambda x: x["nome"])
+            nomicompleti = ["TUTTI"] + [d["nome"] for d in list(DIPENDENTI_PIN.values())]
+            
+            dip_filtro = st.selectbox("Filtra Storico per Dipendente:", nomicompleti)
+            
+            if dip_filtro != "TUTTI":
+                df_det_show = df_dettaglio[df_dettaglio["Dipendente"] == dip_filtro]
+                df_riep_show = df_riepilogo[df_riepilogo["Dipendente"] == dip_filtro]
+            else:
+                df_det_show = df_dettaglio
+                df_riep_show = df_riepilogo
+
+            st.write("#### 📍 Dettaglio Singole Sessioni (Ora Ingresso - Ora Uscita)")
+            st.dataframe(df_det_show, use_container_width=True)
+
+            st.markdown("---")
+            st.write("#### 📊 Riepilogo Giornaliero Totale e Straordinari")
+            st.dataframe(df_riep_show, use_container_width=True)
+        else:
+            st.info("Nessuna timbratura registrata al momento.")
+
+        st.markdown("---")
         st.write("### Carica Cedolini / CU per un Dipendente")
         
         with st.form(key="form_upload_admin"):
@@ -319,17 +374,6 @@ with tab4:
         st.write("### Storico Completo Giustificativi")
         if not df_rich.empty:
             st.dataframe(df_rich, use_container_width=True)
-
-        st.markdown("---")
-        st.write("### Conteggio Presenze Sede & Straordinari")
-        try:
-            df_timb = pd.read_csv(DATA_FILE)
-        except Exception:
-            df_timb = pd.DataFrame()
-        
-        df_calcolo = calcola_ore_e_straordinari(df_timb)
-        if not df_calcolo.empty:
-            st.dataframe(df_calcolo, use_container_width=True)
             
     elif password != "":
         st.error("Password errata.")
