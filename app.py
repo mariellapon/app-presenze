@@ -472,6 +472,44 @@ with tab4:
         else:
             st.info("Nessuna timbratura registrata al momento.")
 
+        # --- NUOVA SEZIONE: INSERIMENTO DIRETTO GIUSTIFICATIVO DA AMMINISTRATORE ---
+        st.markdown("---")
+        st.write("### ✏️ Inserimento Diretto Giustificativo (Sanatoria Ore Mancanti)")
+        st.caption("Usa questo modulo per accreditare o giustificare direttamente le ore di un dipendente senza attendere una sua richiesta.")
+        
+        with st.form(key="form_sana_ore_admin"):
+            col_s1, col_s2, col_s3 = st.columns([2, 1.5, 1.5])
+            with col_s1:
+                dip_sana = st.selectbox("Seleziona Dipendente:", sorted([d["nome"] for d in DIPENDENTI_PIN.values()]))
+            with col_s2:
+                data_sana = st.date_input("Data da Giustificare:", get_now_italy().date())
+            with col_s3:
+                tipo_sana = st.selectbox("Tipo Giustificativo:", ["Permesso (ROL)", "Ferie", "Malattia", "Smart Working", "Trasferta", "Lutto", "Altro"])
+            
+            col_s4, col_s5 = st.columns(2)
+            with col_s4:
+                ore_sana = st.number_input("Ore da Accreditare / Giustificare:", min_value=0.1, max_value=12.0, value=7.81, step=0.25)
+            with col_s5:
+                note_sana = st.text_input("Note dell'Amministratore (opzionale):", value="Giustificato da Amministrazione")
+
+            btn_conferma_sana = st.form_submit_button("Accredita e Sana Ore Mancanti", type="primary")
+
+        if btn_conferma_sana:
+            pin_sana = MAPPA_NOMI_PIN.get(dip_sana, "1000")
+            req_id_sana = int(get_now_italy().timestamp())
+            d_rich_sana = get_now_italy().strftime("%Y-%m-%d %H:%M")
+            d_str_sana = data_sana.strftime("%Y-%m-%d")
+
+            nuovo_giust = pd.DataFrame([[
+                req_id_sana, d_rich_sana, dip_sana, tipo_sana, 
+                d_str_sana, d_str_sana, "08:30", "18:30", 
+                ore_sana, note_sana, "", "APPROVATO"
+            ]], columns=["ID", "Data_Richiesta", "Dipendente", "Tipo", "Data_Inizio", "Data_Fine", "Ora_Inizio", "Ora_Fine", "Ore", "Note", "Allegato", "Stato"])
+
+            nuovo_giust.to_csv(RICHIESTE_FILE, mode='a', header=not os.path.exists(RICHIESTE_FILE) or os.stat(RICHIESTE_FILE).st_size == 0, index=False)
+            st.success(f"Accreditate con successo **{ore_sana} ore** ({tipo_sana}) per **{dip_sana}** in data {d_str_sana}!")
+            st.rerun()
+
         st.markdown("---")
         st.write("### Carica Cedolini / CU per un Dipendente")
         with st.form(key="form_upload_admin"):
