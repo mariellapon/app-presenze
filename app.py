@@ -1,4 +1,4 @@
-import streamlit as st
+      import streamlit as st
 import pandas as pd
 from datetime import datetime, date, time, timedelta
 from zoneinfo import ZoneInfo
@@ -23,21 +23,23 @@ for directory in [DIR_ALLEGATI, DIR_DOCUMENTI]:
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-# Mappa Dipendenti di Default
+# Mappa Dipendenti di Default con Orario Spezzato e Pausa Pranzo
+ORARIO_SPEZZATO_STD = "08:30 - 12:30 / 14:30 - 18:30 (Pausa Pranzo 12:30-14:30)"
+
 DIPENDENTI_DEFAULT = {
-    "1001": {"nome": "AGOSTINELLI FEDERICA", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": "08:30 - 18:30"},
-    "1002": {"nome": "BISCHI MICHELE", "profilo": "Commerciale", "ore_std": 8.0, "commerciale": True, "orario": "08:30 - 18:30 (Mar-Gio Trasferta)"},
-    "1003": {"nome": "BORINI RAFFAELE", "profilo": "Part-Time 6h / Commerciale", "ore_std": 6.0, "commerciale": True, "orario": "Part-Time 6h"},
-    "1004": {"nome": "BUGLIONI SARAH", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": "08:30 - 18:30"},
-    "1005": {"nome": "CUPIDO PATRIZIA", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": "08:30 - 18:30"},
+    "1001": {"nome": "AGOSTINELLI FEDERICA", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": ORARIO_SPEZZATO_STD},
+    "1002": {"nome": "BISCHI MICHELE", "profilo": "Commerciale", "ore_std": 8.0, "commerciale": True, "orario": f"{ORARIO_SPEZZATO_STD} (Mar-Gio Trasferta)"},
+    "1003": {"nome": "BORINI RAFFAELE", "profilo": "Part-Time 6h / Commerciale", "ore_std": 6.0, "commerciale": True, "orario": "Part-Time 6h (Mar-Gio Trasferta)"},
+    "1004": {"nome": "BUGLIONI SARAH", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": ORARIO_SPEZZATO_STD},
+    "1005": {"nome": "CUPIDO PATRIZIA", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": ORARIO_SPEZZATO_STD},
     "1006": {"nome": "D'APONTE PAOLO", "profilo": "Stampatore Turnista", "ore_std": 8.0, "commerciale": False, "orario": "Turni (06-14 / 14-22 / 22-06)"},
-    "1007": {"nome": "MANZOTTI FRANCESCA", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": "08:30 - 18:30"},
+    "1007": {"nome": "MANZOTTI FRANCESCA", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": ORARIO_SPEZZATO_STD},
     "1008": {"nome": "NOVELLI LUCA", "profilo": "Stampatore Turnista", "ore_std": 8.0, "commerciale": False, "orario": "Turni (06-14 / 14-22 / 22-06)"},
-    "1009": {"nome": "NUZZIELLO CARLO", "profilo": "Commerciale", "ore_std": 8.0, "commerciale": True, "orario": "08:30 - 18:30 (Mar-Gio Trasferta)"},
-    "1010": {"nome": "PALLOTTA ANNABELLA", "profilo": "Part-Time 4h / Smart", "ore_std": 4.0, "commerciale": False, "orario": "Part-Time 4h"},
-    "1011": {"nome": "PIERINI FRANCESCO", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": "08:30 - 18:30"},
-    "1012": {"nome": "PONTILLO MARIELLA", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": "08:30 - 18:30"},
-    "1013": {"nome": "SANTOLINI MAURO", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": "08:30 - 18:30"}
+    "1009": {"nome": "NUZZIELLO CARLO", "profilo": "Commerciale", "ore_std": 8.0, "commerciale": True, "orario": f"{ORARIO_SPEZZATO_STD} (Mar-Gio Trasferta)"},
+    "1010": {"nome": "PALLOTTA ANNABELLA", "profilo": "Part-Time 4h / Smart", "ore_std": 4.0, "commerciale": False, "orario": "Part-Time 4h (Smart 2 gg var.)"},
+    "1011": {"nome": "PIERINI FRANCESCO", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": ORARIO_SPEZZATO_STD},
+    "1012": {"nome": "PONTILLO MARIELLA", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": ORARIO_SPEZZATO_STD},
+    "1013": {"nome": "SANTOLINI MAURO", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": ORARIO_SPEZZATO_STD}
 }
 
 def carica_orari_dipendenti():
@@ -256,7 +258,7 @@ with tab2:
                 d_fine_calc = d_fine
                 giorni_totali = max(1, (d_fine - d_inizio).days + 1)
                 ore_totali = ore_std * giorni_totali
-                ora_ini_str, ora_fin_str = "08:00", "17:00"
+                ora_ini_str, ora_fin_str = "08:30", "18:30"
 
             req_id = int(get_now_italy().timestamp())
             nome_file_salvato = ""
@@ -350,7 +352,7 @@ with tab4:
                     DIPENDENTI_PIN[pin_edit] = {
                         "nome": DIPENDENTI_PIN[pin_edit]["nome"],
                         "profilo": nuovo_profilo,
-                        "ore_std": nuove_ore_std,
+                        "ore_std": me_ore_std if 'me_ore_std' in locals() else nuove_ore_std,
                         "commerciale": is_comm,
                         "orario": note_orario
                     }
