@@ -1,13 +1,11 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
 from zoneinfo import ZoneInfo
 import os
 
-# Impostazione pagina
 st.set_page_config(page_title="Rilevazione Presenze & Documenti", page_icon="⏱️", layout="wide")
 
-# Fuso Orario Italiano
 TZ_ITALIA = ZoneInfo("Europe/Rome")
 
 def get_now_italy():
@@ -16,6 +14,7 @@ def get_now_italy():
 # File e Cartelle di sistema
 DATA_FILE = "presenze_log.csv"
 RICHIESTE_FILE = "richieste_log.csv"
+CONFIG_ORARI_FILE = "orari_dipendenti.csv"
 DIR_ALLEGATI = "allegati_richieste"
 DIR_DOCUMENTI = "documenti_dipendenti"
 
@@ -23,34 +22,56 @@ for directory in [DIR_ALLEGATI, DIR_DOCUMENTI]:
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-if not os.path.exists(DATA_FILE):
-    df_init = pd.DataFrame(columns=["Data", "Ora", "Dipendente", "Tipo"])
-    df_init.to_csv(DATA_FILE, index=False)
-
-if not os.path.exists(RICHIESTE_FILE):
-    df_rich = pd.DataFrame(columns=["ID", "Data_Richiesta", "Dipendente", "Tipo", "Data_Inizio", "Data_Fine", "Ora_Inizio", "Ora_Fine", "Ore", "Note", "Allegato", "Stato"])
-    df_rich.to_csv(RICHIESTE_FILE, index=False)
-
-# Mappa Dipendenti con PIN personali e dati contrattuali
-DIPENDENTI_PIN = {
-    "1001": {"nome": "AGOSTINELLI FEDERICA", "ore_std": 8.0, "commerciale": False},
-    "1002": {"nome": "BISCHI MICHELE", "ore_std": 8.0, "commerciale": True},
-    "1003": {"nome": "BORINI RAFFAELE", "ore_std": 6.0, "commerciale": True},
-    "1004": {"nome": "BUGLIONI SARAH", "ore_std": 8.0, "commerciale": False},
-    "1005": {"nome": "CUPIDO PATRIZIA", "ore_std": 8.0, "commerciale": False},
-    "1006": {"nome": "D'APONTE PAOLO", "ore_std": 8.0, "commerciale": False},
-    "1007": {"nome": "MANZOTTI FRANCESCA", "ore_std": 8.0, "commerciale": False},
-    "1008": {"nome": "NOVELLI LUCA", "ore_std": 8.0, "commerciale": False},
-    "1009": {"nome": "NUZZIELLO CARLO", "ore_std": 8.0, "commerciale": True},
-    "1010": {"nome": "PALLOTTA ANNABELLA", "ore_std": 4.0, "commerciale": False},
-    "1011": {"nome": "PIERINI FRANCESCO", "ore_std": 8.0, "commerciale": False},
-    "1012": {"nome": "PONTILLO MARIELLA", "ore_std": 8.0, "commerciale": False},
-    "1013": {"nome": "SANTOLINI MAURO", "ore_std": 8.0, "commerciale": False}
+# Mappa Dipendenti di Default
+DIPENDENTI_DEFAULT = {
+    "1001": {"nome": "AGOSTINELLI FEDERICA", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": "08:30 - 18:30"},
+    "1002": {"nome": "BISCHI MICHELE", "profilo": "Commerciale", "ore_std": 8.0, "commerciale": True, "orario": "08:30 - 18:30 (Mar-Gio Trasferta)"},
+    "1003": {"nome": "BORINI RAFFAELE", "profilo": "Part-Time 6h / Commerciale", "ore_std": 6.0, "commerciale": True, "orario": "Part-Time 6h"},
+    "1004": {"nome": "BUGLIONI SARAH", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": "08:30 - 18:30"},
+    "1005": {"nome": "CUPIDO PATRIZIA", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": "08:30 - 18:30"},
+    "1006": {"nome": "D'APONTE PAOLO", "profilo": "Stampatore Turnista", "ore_std": 8.0, "commerciale": False, "orario": "Turni (06-14 / 14-22 / 22-06)"},
+    "1007": {"nome": "MANZOTTI FRANCESCA", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": "08:30 - 18:30"},
+    "1008": {"nome": "NOVELLI LUCA", "profilo": "Stampatore Turnista", "ore_std": 8.0, "commerciale": False, "orario": "Turni (06-14 / 14-22 / 22-06)"},
+    "1009": {"nome": "NUZZIELLO CARLO", "profilo": "Commerciale", "ore_std": 8.0, "commerciale": True, "orario": "08:30 - 18:30 (Mar-Gio Trasferta)"},
+    "1010": {"nome": "PALLOTTA ANNABELLA", "profilo": "Part-Time 4h / Smart", "ore_std": 4.0, "commerciale": False, "orario": "Part-Time 4h"},
+    "1011": {"nome": "PIERINI FRANCESCO", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": "08:30 - 18:30"},
+    "1012": {"nome": "PONTILLO MARIELLA", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": "08:30 - 18:30"},
+    "1013": {"nome": "SANTOLINI MAURO", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": "08:30 - 18:30"}
 }
 
+def carica_orari_dipendenti():
+    if os.path.exists(CONFIG_ORARI_FILE):
+        try:
+            df = pd.read_csv(CONFIG_ORARI_FILE, dtype={'PIN': str})
+            orari_dict = {}
+            for _, row in df.iterrows():
+                orari_dict[str(row['PIN'])] = {
+                    "nome": row['Nome'],
+                    "profilo": row['Profilo'],
+                    "ore_std": float(row['Ore_Std']),
+                    "commerciale": bool(row['Commerciale']),
+                    "orario": str(row['Orario_Note'])
+                }
+            return orari_dict
+        except Exception:
+            return DIPENDENTI_DEFAULT
+    else:
+        rows = []
+        for pin, info in DIPENDENTI_DEFAULT.items():
+            rows.append({"PIN": pin, "Nome": info["nome"], "Profilo": info["profilo"], "Ore_Std": info["ore_std"], "Commerciale": info["commerciale"], "Orario_Note": info["orario"]})
+        pd.DataFrame(rows).to_csv(CONFIG_ORARI_FILE, index=False)
+        return DIPENDENTI_DEFAULT
+
+DIPENDENTI_PIN = carica_orari_dipendenti()
 MAPPA_NOMI_PIN = {v["nome"]: k for k, v in DIPENDENTI_PIN.items()}
 
-def elabora_presenze_e_dettagli(df_timb):
+if not os.path.exists(DATA_FILE):
+    pd.DataFrame(columns=["Data", "Ora", "Dipendente", "Tipo"]).to_csv(DATA_FILE, index=False)
+
+if not os.path.exists(RICHIESTE_FILE):
+    pd.DataFrame(columns=["ID", "Data_Richiesta", "Dipendente", "Tipo", "Data_Inizio", "Data_Fine", "Ora_Inizio", "Ora_Fine", "Ore", "Note", "Allegato", "Stato"]).to_csv(RICHIESTE_FILE, index=False)
+
+def elabora_presenze_e_quadratura(df_timb, df_rich):
     if df_timb.empty:
         return pd.DataFrame(), pd.DataFrame()
     
@@ -95,22 +116,62 @@ def elabora_presenze_e_dettagli(df_timb):
                 'Ore Sessione': ore_sessione if ora_usc_str != "In corso" else "In corso"
             })
 
-        ore_totali_giorno = round(totale_secondi_giorno / 3600.0, 2)
-        straordinario_grezzo = max(0.0, ore_totali_giorno - ore_std)
-        straordinario_30min = (straordinario_grezzo // 0.5) * 0.5
+        ore_lavorate = round(totale_secondi_giorno / 3600.0, 2)
+        
+        ore_giustificate = 0.0
+        if not df_rich.empty and "Stato" in df_rich.columns:
+            rich_appr = df_rich[(df_rich["Dipendente"] == dip) & (df_rich["Stato"] == "APPROVATO")]
+            for _, r in rich_appr.iterrows():
+                if str(r["Data_Inizio"]) <= dt <= str(r["Data_Fine"]):
+                    ore_giustificate += float(r.get("Ore", 0.0))
+
+        totale_coperto = ore_lavorate + ore_giustificate
+        ore_mancanti = max(0.0, round(ore_std - totale_coperto, 2))
+        straordinario = max(0.0, round(totale_coperto - ore_std, 2))
+        straordinario_30min = (straordinario // 0.5) * 0.5
 
         giornaliero_dict[(dip, dt)] = {
             'Data': dt,
             'Dipendente': dip,
-            'Ore Lavorate Totali': ore_totali_giorno,
             'Ore Contratto': ore_std,
+            'Ore Lavorate Effettive': ore_lavorate,
+            'Ore Giustificate (Approvate)': ore_giustificate,
+            'Ore Mancanti da Giustificare': ore_mancanti,
             'Straordinario Calcolato': straordinario_30min
         }
 
-    df_dettaglio = pd.DataFrame(dettagli_rows)
-    df_riepilogo = pd.DataFrame(list(giornaliero_dict.values()))
+    return pd.DataFrame(dettagli_rows), pd.DataFrame(list(giornaliero_dict.values()))
+
+def genera_calendario_assenze(df_rich, mese, anno):
+    nomi_dip = sorted([v["nome"] for v in DIPENDENTI_PIN.values()])
     
-    return df_dettaglio, df_riepilogo
+    # Costruisci dataframe con i giorni del mese
+    import calendar
+    num_giorni = calendar.monthrange(anno, mese)[1]
+    giorni = [date(anno, mese, g) for g in range(1, num_giorni + 1)]
+    giorni_str = [g.strftime("%Y-%m-%d") for g in giorni]
+    
+    df_cal = pd.DataFrame(index=nomi_dip, columns=giorni_str)
+    df_cal = df_cal.fillna("")
+    
+    if not df_rich.empty and "Stato" in df_rich.columns:
+        rich_appr = df_rich[df_rich["Stato"] == "APPROVATO"]
+        for _, r in rich_appr.iterrows():
+            dip = r["Dipendente"]
+            tipo = r["Tipo"]
+            ore = r["Ore"]
+            d_ini = datetime.strptime(str(r["Data_Inizio"]), "%Y-%m-%d").date()
+            d_fin = datetime.strptime(str(r["Data_Fine"]), "%Y-%m-%d").date()
+            
+            for g in giorni:
+                if d_ini <= g <= d_fin:
+                    g_str = g.strftime("%Y-%m-%d")
+                    if dip in df_cal.index and g_str in df_cal.columns:
+                        etichetta = f"{tipo}" if tipo != "Permesso (ROL)" else f"ROL ({ore}h)"
+                         att_val = df_cal.at[dip, g_str]
+                        df_cal.at[dip, g_str] = f"{att_val}, {etichetta}".strip(", ")
+                        
+    return df_cal
 
 st.title("Sistema Presenze, Giustificativi & Documenti")
 
@@ -179,9 +240,7 @@ with tab2:
             t_fine = st.time_input("Ora Fine (solo per Permesso):", time(13, 0))
 
         note = st.text_area("Note / Motivazione (opzionale):")
-        
         file_allegato = st.file_uploader("Carica Certificato Medico o Documento (opzionale - PDF, PNG, JPG):", type=["pdf", "png", "jpg", "jpeg"])
-        
         btn_send_req = st.form_submit_button("Invia Richiesta all'Amministratore", type="primary", use_container_width=True)
 
     if btn_send_req:
@@ -225,7 +284,6 @@ with tab2:
 # --- TAB 3: AREA PERSONALE DOCUMENTI DIPENDENTE ---
 with tab3:
     st.subheader("Consulta e Scarica i tuoi Documenti Personali (Cedolini, CU)")
-    
     col_p1, _ = st.columns([1.5, 2])
     with col_p1:
         pin_doc = st.text_input("Inserisci il tuo PIN Personale:", type="password", max_chars=4, key="pin_doc_view")
@@ -234,7 +292,6 @@ with tab3:
     if pin_doc_clean in DIPENDENTI_PIN:
         dip_nome = DIPENDENTI_PIN[pin_doc_clean]["nome"]
         st.info(f"Area Personale di: **{dip_nome}**")
-        
         files_dip = [f for f in os.listdir(DIR_DOCUMENTI) if f.startswith(f"{pin_doc_clean}_")]
         
         if files_dip:
@@ -243,12 +300,7 @@ with tab3:
                 path_f = os.path.join(DIR_DOCUMENTI, f)
                 nome_visibile = f.replace(f"{pin_doc_clean}_", "")
                 with open(path_f, "rb") as file_data:
-                    st.download_button(
-                        label=f"Scarica: {nome_visibile}",
-                        data=file_data,
-                        file_name=nome_visibile,
-                        key=f"dl_{f}"
-                    )
+                    st.download_button(label=f"Scarica: {nome_visibile}", data=file_data, file_name=nome_visibile, key=f"dl_{f}")
         else:
             st.warning("Nessun documento caricato al momento per il tuo profilo.")
     elif pin_doc_clean != "":
@@ -257,31 +309,75 @@ with tab3:
 # --- TAB 4: AREA AMMINISTRATORE ---
 with tab4:
     st.subheader("Gestione Amministrazione, Approvazioni & Documenti")
-    
     password = st.text_input("Password Amministratore:", type="password", key="pass_admin")
     
     if password == "1234":
-        st.markdown("---")
-        st.write("### Quadro Contratti e Inquadramenti Part-Time / Trasferte")
         
+        # TABELLA / CALENDARIO ASSENZE APPROVATE
+        st.markdown("---")
+        st.write("### 📅 Calendario Mensile Assenze & Permessi Approvati")
+        
+        c_m1, c_m2 = st.columns(2)
+        with c_m1:
+            mese_sel = st.selectbox("Seleziona Mese:", list(range(1, 13)), index=get_now_italy().month - 1)
+        with c_m2:
+            anno_sel = st.number_input("Seleziona Anno:", min_value=2024, max_value=2030, value=get_now_italy().year)
+            
+        try:
+            df_rich = pd.read_csv(RICHIESTE_FILE)
+        except Exception:
+            df_rich = pd.DataFrame()
+
+        df_cal_assenze = genera_calendario_assenze(df_rich, mese_sel, anno_sel)
+        st.dataframe(df_cal_assenze, use_container_width=True)
+
+        st.markdown("---")
+        st.write("### ⚙️ Gestione Orari Personalizzati & Turni Dipendenti")
+        
+        with st.expander("Modifica Orario o Profilo Contrattuale di un Dipendente"):
+            with st.form(key="form_edit_orario"):
+                pin_edit = st.selectbox("Seleziona Dipendente da Modificare:", list(DIPENDENTI_PIN.keys()), format_func=lambda x: f"{x} - {DIPENDENTI_PIN[x]['nome']}")
+                
+                info_att = DIPENDENTI_PIN[pin_edit]
+                c1_e, c2_e = st.columns(2)
+                with c1_e:
+                    nuovo_profilo = st.selectbox("Profilo / Ruolo:", ["Standard Ufficio", "Stampatore Turnista", "Commerciale", "Part-Time 6h", "Part-Time 4h", "Personalizzato"])
+                    nuove_ore_std = st.number_input("Ore Contrattuali Giornaliere:", min_value=1.0, max_value=12.0, value=float(info_att["ore_std"]), step=0.5)
+                with c2_e:
+                    is_comm = st.checkbox("Commerciale (Trasferta Mar-Gio)?", value=bool(info_att["commerciale"]))
+                    note_orario = st.text_input("Descrizione Orario / Note:", value=str(info_att["orario"]))
+                
+                btn_save_orario = st.form_submit_button("Salva Modifiche Orario Dipendente", type="primary")
+                
+                if btn_save_orario:
+                    DIPENDENTI_PIN[pin_edit] = {
+                        "nome": DIPENDENTI_PIN[pin_edit]["nome"],
+                        "profilo": nuovo_profilo,
+                        "ore_std": nuove_ore_std,
+                        "commerciale": is_comm,
+                        "orario": note_orario
+                    }
+                    rows = []
+                    for p, d in DIPENDENTI_PIN.items():
+                        rows.append({"PIN": p, "Nome": d["nome"], "Profilo": d["profilo"], "Ore_Std": d["ore_std"], "Commerciale": d["commerciale"], "Orario_Note": d["orario"]})
+                    pd.DataFrame(rows).to_csv(CONFIG_ORARI_FILE, index=False)
+                    st.success(f"Orario aggiornato con successo per {DIPENDENTI_PIN[pin_edit]['nome']}!")
+                    st.rerun()
+
         inquadr_rows = []
         for p, d in DIPENDENTI_PIN.items():
             inquadr_rows.append({
                 "PIN": p,
                 "Dipendente": d["nome"],
-                "Ore Standard/Giorno": f"{d['ore_std']} h",
-                "Ruolo / Note Speciali": "Commerciale (Trasferta Mar-Gio)" if d["commerciale"] else ("Part-time 4h (Smart 2 gg var.)" if p == "1010" else ("Part-time 6h" if p == "1003" else "Standard Full-Time"))
+                "Profilo": d["profilo"],
+                "Ore Contratto": f"{d['ore_std']} h",
+                "Orario / Note": d["orario"]
             })
         st.dataframe(pd.DataFrame(inquadr_rows), use_container_width=True)
 
         st.markdown("---")
         st.write("### Richieste In Sospeso e Gestione Allegati")
         
-        try:
-            df_rich = pd.read_csv(RICHIESTE_FILE)
-        except Exception:
-            df_rich = pd.DataFrame()
-            
         richieste_sospese = df_rich[df_rich["Stato"] == "IN ATTESA"] if not df_rich.empty and "Stato" in df_rich.columns else pd.DataFrame()
         
         if richieste_sospese.empty:
@@ -298,12 +394,7 @@ with tab4:
                         file_path = os.path.join(DIR_ALLEGATI, str(row['Allegato']))
                         if os.path.exists(file_path):
                             with open(file_path, "rb") as af:
-                                st.download_button(
-                                    label="Scarica / Visualizza Certificato Allegato",
-                                    data=af,
-                                    file_name=str(row['Allegato']),
-                                    key=f"down_att_{row['ID']}"
-                                )
+                                st.download_button(label="Scarica Certificato Allegato", data=af, file_name=str(row['Allegato']), key=f"down_att_{row['ID']}")
                     
                     col_app, col_rif = st.columns(2)
                     with col_app:
@@ -320,13 +411,13 @@ with tab4:
                             st.rerun()
 
         st.markdown("---")
-        st.write("### Storico Timbrature Dettagliate e Calcolo Presenze")
+        st.write("### ⏱️ Storico Timbrature & Quadratura Presenze/Assenze")
         try:
             df_timb = pd.read_csv(DATA_FILE)
         except Exception:
             df_timb = pd.DataFrame()
             
-        df_dettaglio, df_riepilogo = elabora_presenze_e_dettagli(df_timb)
+        df_dettaglio, df_riepilogo = elabora_presenze_e_quadratura(df_timb, df_rich)
 
         if not df_dettaglio.empty:
             nomicompleti = ["TUTTI"] + sorted([d["nome"] for d in list(DIPENDENTI_PIN.values())])
@@ -343,14 +434,13 @@ with tab4:
             st.dataframe(df_det_show, use_container_width=True)
 
             st.markdown("---")
-            st.write("#### 📊 Riepilogo Giornaliero Totale e Straordinari")
+            st.write("#### 📊 Bilancio Quadratura Giornaliera (Lavorate vs Mancanti/Straordinari)")
             st.dataframe(df_riep_show, use_container_width=True)
         else:
             st.info("Nessuna timbratura registrata al momento.")
 
         st.markdown("---")
         st.write("### Carica Cedolini / CU per un Dipendente")
-        
         with st.form(key="form_upload_admin"):
             col_d1, col_d2 = st.columns(2)
             with col_d1:
@@ -377,10 +467,8 @@ with tab4:
 
         st.markdown("---")
         st.write("### ⚠️ Manutenzione Dati Presenze")
-        st.caption("Usa questo pulsante per svuotare lo storico delle timbrature di prova.")
-        if st.button("️ Svuota Storico Timbrature (Reset)", type="secondary"):
-            df_init = pd.DataFrame(columns=["Data", "Ora", "Dipendente", "Tipo"])
-            df_init.to_csv(DATA_FILE, index=False)
+        if st.button("🗑️ Svuota Storico Timbrature di Prova (Reset)", type="secondary"):
+            pd.DataFrame(columns=["Data", "Ora", "Dipendente", "Tipo"]).to_csv(DATA_FILE, index=False)
             st.success("Storico timbrature resettato con successo!")
             st.rerun()
 
