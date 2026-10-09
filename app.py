@@ -23,23 +23,21 @@ for directory in [DIR_ALLEGATI, DIR_DOCUMENTI]:
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-# Mappa Dipendenti con orario spezzato e pausa pranzo
-ORARIO_SPEZZATO_STD = "08:30 - 12:30 / 14:30 - 18:30 (Pausa Pranzo 12:30-14:30)"
-
+# Mappa Dipendenti con orari spezzati di default (Mattina + Pausa + Pomeriggio)
 DIPENDENTI_DEFAULT = {
-    "1001": {"nome": "AGOSTINELLI FEDERICA", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": ORARIO_SPEZZATO_STD},
-    "1002": {"nome": "BISCHI MICHELE", "profilo": "Commerciale", "ore_std": 8.0, "commerciale": True, "orario": f"{ORARIO_SPEZZATO_STD} (Mar-Gio Trasferta)"},
-    "1003": {"nome": "BORINI RAFFAELE", "profilo": "Part-Time 6h / Commerciale", "ore_std": 6.0, "commerciale": True, "orario": "Part-Time 6h (Mar-Gio Trasferta)"},
-    "1004": {"nome": "BUGLIONI SARAH", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": ORARIO_SPEZZATO_STD},
-    "1005": {"nome": "CUPIDO PATRIZIA", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": ORARIO_SPEZZATO_STD},
-    "1006": {"nome": "D'APONTE PAOLO", "profilo": "Stampatore Turnista", "ore_std": 8.0, "commerciale": False, "orario": "Turni (06-14 / 14-22 / 22-06)"},
-    "1007": {"nome": "MANZOTTI FRANCESCA", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": ORARIO_SPEZZATO_STD},
-    "1008": {"nome": "NOVELLI LUCA", "profilo": "Stampatore Turnista", "ore_std": 8.0, "commerciale": False, "orario": "Turni (06-14 / 14-22 / 22-06)"},
-    "1009": {"nome": "NUZZIELLO CARLO", "profilo": "Commerciale", "ore_std": 8.0, "commerciale": True, "orario": f"{ORARIO_SPEZZATO_STD} (Mar-Gio Trasferta)"},
-    "1010": {"nome": "PALLOTTA ANNABELLA", "profilo": "Part-Time 4h / Smart", "ore_std": 4.0, "commerciale": False, "orario": "Part-Time 4h (Smart 2 gg var.)"},
-    "1011": {"nome": "PIERINI FRANCESCO", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": ORARIO_SPEZZATO_STD},
-    "1012": {"nome": "PONTILLO MARIELLA", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": ORARIO_SPEZZATO_STD},
-    "1013": {"nome": "SANTOLINI MAURO", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "orario": ORARIO_SPEZZATO_STD}
+    "1001": {"nome": "AGOSTINELLI FEDERICA", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "ing_m": "08:30", "usc_m": "12:30", "ing_p": "14:30", "usc_p": "18:30"},
+    "1002": {"nome": "BISCHI MICHELE", "profilo": "Commerciale", "ore_std": 8.0, "commerciale": True, "ing_m": "08:30", "usc_m": "12:30", "ing_p": "14:30", "usc_p": "18:30"},
+    "1003": {"nome": "BORINI RAFFAELE", "profilo": "Part-Time 6h / Commerciale", "ore_std": 6.0, "commerciale": True, "ing_m": "08:30", "usc_m": "12:30", "ing_p": "14:30", "usc_p": "16:30"},
+    "1004": {"nome": "BUGLIONI SARAH", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "ing_m": "08:30", "usc_m": "12:30", "ing_p": "14:30", "usc_p": "18:30"},
+    "1005": {"nome": "CUPIDO PATRIZIA", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "ing_m": "08:30", "usc_m": "12:30", "ing_p": "14:30", "usc_p": "18:30"},
+    "1006": {"nome": "D'APONTE PAOLO", "profilo": "Stampatore Turnista", "ore_std": 8.0, "commerciale": False, "ing_m": "06:00", "usc_m": "14:00", "ing_p": "--:--", "usc_p": "--:--"},
+    "1007": {"nome": "MANZOTTI FRANCESCA", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "ing_m": "08:30", "usc_m": "12:30", "ing_p": "14:30", "usc_p": "18:30"},
+    "1008": {"nome": "NOVELLI LUCA", "profilo": "Stampatore Turnista", "ore_std": 8.0, "commerciale": False, "ing_m": "06:00", "usc_m": "14:00", "ing_p": "--:--", "usc_p": "--:--"},
+    "1009": {"nome": "NUZZIELLO CARLO", "profilo": "Commerciale", "ore_std": 8.0, "commerciale": True, "ing_m": "08:30", "usc_m": "12:30", "ing_p": "14:30", "usc_p": "18:30"},
+    "1010": {"nome": "PALLOTTA ANNABELLA", "profilo": "Part-Time 4h / Smart", "ore_std": 4.0, "commerciale": False, "ing_m": "08:30", "usc_m": "12:30", "ing_p": "--:--", "usc_p": "--:--"},
+    "1011": {"nome": "PIERINI FRANCESCO", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "ing_m": "08:30", "usc_m": "12:30", "ing_p": "14:30", "usc_p": "18:30"},
+    "1012": {"nome": "PONTILLO MARIELLA", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "ing_m": "08:30", "usc_m": "12:30", "ing_p": "14:30", "usc_p": "18:30"},
+    "1013": {"nome": "SANTOLINI MAURO", "profilo": "Standard Ufficio", "ore_std": 8.0, "commerciale": False, "ing_m": "08:30", "usc_m": "12:30", "ing_p": "14:30", "usc_p": "18:30"}
 }
 
 def carica_orari_dipendenti():
@@ -53,7 +51,10 @@ def carica_orari_dipendenti():
                     "profilo": row['Profilo'],
                     "ore_std": float(row['Ore_Std']),
                     "commerciale": bool(row['Commerciale']),
-                    "orario": str(row['Orario_Note'])
+                    "ing_m": str(row.get('Ingresso_Mattina', '08:30')),
+                    "usc_m": str(row.get('Uscita_Mattina', '12:30')),
+                    "ing_p": str(row.get('Ingresso_Pomeriggio', '14:30')),
+                    "usc_p": str(row.get('Uscita_Pomeriggio', '18:30'))
                 }
             return orari_dict
         except Exception:
@@ -61,7 +62,17 @@ def carica_orari_dipendenti():
     else:
         rows = []
         for pin, info in DIPENDENTI_DEFAULT.items():
-            rows.append({"PIN": pin, "Nome": info["nome"], "Profilo": info["profilo"], "Ore_Std": info["ore_std"], "Commerciale": info["commerciale"], "Orario_Note": info["orario"]})
+            rows.append({
+                "PIN": pin, 
+                "Nome": info["nome"], 
+                "Profilo": info["profilo"], 
+                "Ore_Std": info["ore_std"], 
+                "Commerciale": info["commerciale"],
+                "Ingresso_Mattina": info["ing_m"],
+                "Uscita_Mattina": info["usc_m"],
+                "Ingresso_Pomeriggio": info["ing_p"],
+                "Uscita_Pomeriggio": info["usc_p"]
+            })
         pd.DataFrame(rows).to_csv(CONFIG_ORARI_FILE, index=False)
         return DIPENDENTI_DEFAULT
 
@@ -331,22 +342,30 @@ with tab4:
         st.dataframe(df_cal_assenze, use_container_width=True)
 
         st.markdown("---")
-        st.write("### ⚙️ Gestione Orari Personalizzati & Turni Dipendenti")
+        st.write("### ⚙️ Gestione Orari Personalizzati, Pausa Pranzo e Turni")
         
-        with st.expander("Modifica Orario o Profilo Contrattuale di un Dipendente"):
+        with st.expander("Modifica Orario e Fasce Lavorative di un Dipendente"):
             with st.form(key="form_edit_orario"):
                 pin_edit = st.selectbox("Seleziona Dipendente da Modificare:", list(DIPENDENTI_PIN.keys()), format_func=lambda x: f"{x} - {DIPENDENTI_PIN[x]['nome']}")
-                
                 info_att = DIPENDENTI_PIN[pin_edit]
-                c1_e, c2_e = st.columns(2)
-                with c1_e:
+                
+                col_e1, col_e2 = st.columns(2)
+                with col_e1:
                     nuovo_profilo = st.selectbox("Profilo / Ruolo:", ["Standard Ufficio", "Stampatore Turnista", "Commerciale", "Part-Time 6h", "Part-Time 4h", "Personalizzato"])
                     nuove_ore_std = st.number_input("Ore Contrattuali Giornaliere:", min_value=1.0, max_value=12.0, value=float(info_att["ore_std"]), step=0.5)
-                with c2_e:
                     is_comm = st.checkbox("Commerciale (Trasferta Mar-Gio)?", value=bool(info_att["commerciale"]))
-                    note_orario = st.text_input("Descrizione Orario / Note:", value=str(info_att["orario"]))
                 
-                btn_save_orario = st.form_submit_button("Salva Modifiche Orario Dipendente", type="primary")
+                with col_e2:
+                    st.write("**Fasce Orarie e Pausa Pranzo:**")
+                    c_m1, c_m2 = st.columns(2)
+                    with c_m1:
+                        n_ing_m = st.text_input("Ingresso Mattina:", value=info_att.get("ing_m", "08:30"))
+                        n_ing_p = st.text_input("Ingresso Pomeriggio (dopo pausa):", value=info_att.get("ing_p", "14:30"))
+                    with c_m2:
+                        n_usc_m = st.text_input("Uscita Mattina (inizio pausa):", value=info_att.get("usc_m", "12:30"))
+                        n_usc_p = st.text_input("Uscita Pomeriggio:", value=info_att.get("usc_p", "18:30"))
+
+                btn_save_orario = st.form_submit_button("Salva Configurazione Orario", type="primary")
                 
                 if btn_save_orario:
                     DIPENDENTI_PIN[pin_edit] = {
@@ -354,13 +373,26 @@ with tab4:
                         "profilo": nuovo_profilo,
                         "ore_std": nuove_ore_std,
                         "commerciale": is_comm,
-                        "orario": note_orario
+                        "ing_m": n_ing_m,
+                        "usc_m": n_usc_m,
+                        "ing_p": n_ing_p,
+                        "usc_p": n_usc_p
                     }
                     rows = []
                     for p, d in DIPENDENTI_PIN.items():
-                        rows.append({"PIN": p, "Nome": d["nome"], "Profilo": d["profilo"], "Ore_Std": d["ore_std"], "Commerciale": d["commerciale"], "Orario_Note": d["orario"]})
+                        rows.append({
+                            "PIN": p, 
+                            "Nome": d["nome"], 
+                            "Profilo": d["profilo"], 
+                            "Ore_Std": d["ore_std"], 
+                            "Commerciale": d["commerciale"],
+                            "Ingresso_Mattina": d["ing_m"],
+                            "Uscita_Mattina": d["usc_m"],
+                            "Ingresso_Pomeriggio": d["ing_p"],
+                            "Uscita_Pomeriggio": d["usc_p"]
+                        })
                     pd.DataFrame(rows).to_csv(CONFIG_ORARI_FILE, index=False)
-                    st.success(f"Orario aggiornato con successo per {DIPENDENTI_PIN[pin_edit]['nome']}!")
+                    st.success(f"Orario e Pausa Pranzo aggiornati per {DIPENDENTI_PIN[pin_edit]['nome']}!")
                     st.rerun()
 
         inquadr_rows = []
@@ -370,7 +402,9 @@ with tab4:
                 "Dipendente": d["nome"],
                 "Profilo": d["profilo"],
                 "Ore Contratto": f"{d['ore_std']} h",
-                "Orario / Note": d["orario"]
+                "Mattina": f"{d['ing_m']} - {d['usc_m']}",
+                "Pausa Pranzo": f"{d['usc_m']} - {d['ing_p']}" if d['ing_p'] != "--:--" else "Nessuna",
+                "Pomeriggio": f"{d['ing_p']} - {d['usc_p']}" if d['ing_p'] != "--:--" else "Nessuno"
             })
         st.dataframe(pd.DataFrame(inquadr_rows), use_container_width=True)
 
