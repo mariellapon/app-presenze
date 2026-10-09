@@ -1,4 +1,4 @@
-      import streamlit as st
+import streamlit as st
 import pandas as pd
 from datetime import datetime, date, time, timedelta
 from zoneinfo import ZoneInfo
@@ -23,7 +23,7 @@ for directory in [DIR_ALLEGATI, DIR_DOCUMENTI]:
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-# Mappa Dipendenti di Default con Orario Spezzato e Pausa Pranzo
+# Mappa Dipendenti con orario spezzato e pausa pranzo
 ORARIO_SPEZZATO_STD = "08:30 - 12:30 / 14:30 - 18:30 (Pausa Pranzo 12:30-14:30)"
 
 DIPENDENTI_DEFAULT = {
@@ -352,7 +352,7 @@ with tab4:
                     DIPENDENTI_PIN[pin_edit] = {
                         "nome": DIPENDENTI_PIN[pin_edit]["nome"],
                         "profilo": nuovo_profilo,
-                        "ore_std": me_ore_std if 'me_ore_std' in locals() else nuove_ore_std,
+                        "ore_std": nuove_ore_std,
                         "commerciale": is_comm,
                         "orario": note_orario
                     }
