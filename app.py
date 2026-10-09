@@ -472,12 +472,11 @@ with tab4:
         else:
             st.info("Nessuna timbratura registrata al momento.")
 
-        # --- SEZIONE: INSERIMENTO DIRETTO CON SUGGERIMENTO AUTOMATICO DIPENDENTE + ORE ---
+        # --- SEZIONE: INSERIMENTO DIRETTO GIUSTIFICATIVO CON PRECOMPILAZIONE ---
         st.markdown("---")
         st.write("### ✏️ Inserimento Diretto Giustificativo (Sanatoria Ore Mancanti)")
         st.caption("Usa questo modulo per accreditare o giustificare direttamente le ore di un dipendente senza attendere una sua richiesta.")
         
-        # Individua eventuale record con ore mancanti dal bilancio per precompilare
         suggerito_dip = sorted([d["nome"] for d in DIPENDENTI_PIN.values()])[0]
         suggerite_ore = 7.81
         suggerita_data = get_now_italy().date()
@@ -555,12 +554,31 @@ with tab4:
         if not df_rich.empty:
             st.dataframe(df_rich, use_container_width=True)
 
+        # --- SEZIONE MANUTENZIONE CON PULSANTI RESET DEDICATI ---
         st.markdown("---")
-        st.write("### ⚠️ Manutenzione Dati Presenze")
-        if st.button("🗑️ Svuota Storico Timbrature di Prova (Reset)", type="secondary"):
-            pd.DataFrame(columns=["Data", "Ora", "Dipendente", "Tipo"]).to_csv(DATA_FILE, index=False)
-            st.success("Storico timbrature resettato con successo!")
-            st.rerun()
+        st.write("### ⚠️ Manutenzione e Reset Dati")
+        st.caption("Utilizza i pulsanti sottostanti per azzerare selettivamente i dati di test.")
+        
+        col_res1, col_res2, col_res3 = st.columns(3)
+        
+        with col_res1:
+            if st.button("🗑️ Svuota Timbrature", use_container_width=True):
+                pd.DataFrame(columns=["Data", "Ora", "Dipendente", "Tipo"]).to_csv(DATA_FILE, index=False)
+                st.success("Storico timbrature azzerato!")
+                st.rerun()
+                
+        with col_res2:
+            if st.button("🗑️ Svuota Giustificativi / Assenze", use_container_width=True):
+                pd.DataFrame(columns=["ID", "Data_Richiesta", "Dipendente", "Tipo", "Data_Inizio", "Data_Fine", "Ora_Inizio", "Ora_Fine", "Ore", "Note", "Allegato", "Stato"]).to_csv(RICHIESTE_FILE, index=False)
+                st.success("Storico giustificativi e assenze azzerato!")
+                st.rerun()
+                
+        with col_res3:
+            if st.button("💥 Reset Totale (Timbrature + Giustificativi)", type="primary", use_container_width=True):
+                pd.DataFrame(columns=["Data", "Ora", "Dipendente", "Tipo"]).to_csv(DATA_FILE, index=False)
+                pd.DataFrame(columns=["ID", "Data_Richiesta", "Dipendente", "Tipo", "Data_Inizio", "Data_Fine", "Ora_Inizio", "Ora_Fine", "Ore", "Note", "Allegato", "Stato"]).to_csv(RICHIESTE_FILE, index=False)
+                st.success("Reset completo effettuato!")
+                st.rerun()
 
     elif password != "":
         st.error("Password errata.")
