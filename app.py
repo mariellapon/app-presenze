@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime, date, time, timedelta
 from zoneinfo import ZoneInfo
 import os
+import calendar
 
 st.set_page_config(page_title="Rilevazione Presenze & Documenti", page_icon="⏱️", layout="wide")
 
@@ -144,9 +145,6 @@ def elabora_presenze_e_quadratura(df_timb, df_rich):
 
 def genera_calendario_assenze(df_rich, mese, anno):
     nomi_dip = sorted([v["nome"] for v in DIPENDENTI_PIN.values()])
-    
-    # Costruisci dataframe con i giorni del mese
-    import calendar
     num_giorni = calendar.monthrange(anno, mese)[1]
     giorni = [date(anno, mese, g) for g in range(1, num_giorni + 1)]
     giorni_str = [g.strftime("%Y-%m-%d") for g in giorni]
@@ -168,7 +166,7 @@ def genera_calendario_assenze(df_rich, mese, anno):
                     g_str = g.strftime("%Y-%m-%d")
                     if dip in df_cal.index and g_str in df_cal.columns:
                         etichetta = f"{tipo}" if tipo != "Permesso (ROL)" else f"ROL ({ore}h)"
-                         att_val = df_cal.at[dip, g_str]
+                        att_val = df_cal.at[dip, g_str]
                         df_cal.at[dip, g_str] = f"{att_val}, {etichetta}".strip(", ")
                         
     return df_cal
@@ -313,7 +311,6 @@ with tab4:
     
     if password == "1234":
         
-        # TABELLA / CALENDARIO ASSENZE APPROVATE
         st.markdown("---")
         st.write("### 📅 Calendario Mensile Assenze & Permessi Approvati")
         
